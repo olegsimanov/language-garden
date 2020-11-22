@@ -1,2 +1,2 @@
-# language_garden
+# language-garden
 language garden
