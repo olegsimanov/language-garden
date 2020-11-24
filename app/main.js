@@ -196,8 +196,6 @@ function startIt()
     let curve               = document.getElementById('curve');
     let curveText           = document.getElementById('text');
 
-    // $(curve).keyup(function(e) { changeCurve();} );
-    // $(curveText).keyup(function(e) { changeCurve();} );
 
     if (first)
     {
