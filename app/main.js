@@ -8,7 +8,8 @@ function createCurvedWord(text, points) {
 
         startX:     points[0],  startY:     points[1],
         control1X:  points[2],  control1Y:  points[3],
-        control2X:  points[4],  control2Y:  points[5],
+        control2X:  points[2],  control2Y:  points[3],
+        // control2X:  points[4],  control2Y:  points[5],
         endX:       points[6],  endY:       points[7],
 
         // changeCoordinates: function (startX, startY, control1X, control1Y, control2X, control2Y, endX, endY) {
@@ -26,14 +27,11 @@ function createCurvedWord(text, points) {
 
         changeCoordinates: function (points) {
             if (points.length === 8) {
-                this.startX     = points[0];
-                this.startY     = points[1];
-                this.control1X  = points[2];
-                this.control1Y  = points[3];
-                this.control2X  = points[4];
-                this.control2Y  = points[5];
-                this.endX       = points[6];
-                this.endY       = points[7];
+                this.startX     = points[0]; this.startY     = points[1];
+                this.control1X  = points[2]; this.control1Y  = points[3];
+                this.control2X  = points[2]; this.control2Y  = points[3];
+                // this.control2X  = points[4]; this.control2Y  = points[5];
+                this.endX       = points[6]; this.endY       = points[7];
             }
         },
 
@@ -45,7 +43,7 @@ function createCurvedWord(text, points) {
 
         draw: function (ctx, width, height) {
 
-            ctx.clearRect(0, 0,width, height);
+            ctx.clearRect(0, 0, width, height);
 
             this.drawCurve(ctx);
             this.drawWord(ctx);
@@ -55,12 +53,16 @@ function createCurvedWord(text, points) {
         drawCurve: function (ctx) {
 
             ctx.save();                                                         // saves the entire state of the canvas by pushing the current state onto a stack.
-            ctx.beginPath();
+            ctx.beginPath();                                                    // starts a new path by emptying the list of sub-paths.
 
-            ctx.moveTo(this.startX, this.startY);
+            ctx.moveTo(this.startX, this.startY);                               // begins a new sub-path at the point specified by the given (x, y) coordinates
             ctx.bezierCurveTo(this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
 
-            ctx.stroke();
+            let incr = 15;
+            ctx.moveTo(this.startX - incr/1.5, this.startY - incr);
+            ctx.bezierCurveTo(this.control1X, this.control1Y - incr, this.control2X, this.control2Y - incr, this.endX, this.endY - incr);
+
+            ctx.stroke();                                                       // strokes (outlines) the current or given path with the current stroke style
             ctx.restore();                                                      // restores the most recently saved canvas state by popping the top entry in the drawing state stack. If there is no saved state, this method does nothing.
 
         },
@@ -170,10 +172,20 @@ function createCurvedWord(text, points) {
 }
 
 
+// global vars section
+
+let first = true;
+let curvedWord;
+
+let mouseButtonPressed = false;
+let mouse_X = 0;
+let mouse_Y = 0;
+
+
 function startIt()
 {
     const canvasDiv         = document.getElementById('canvasDiv');
-    canvasDiv.innerHTML     = '<canvas id="layer0" width="300" height="300">Your browser does not support the canvas element.</canvas>'; // for IE
+    canvasDiv.innerHTML     = '<canvas id="layer0" width="500" height="500">Your browser does not support the canvas element.</canvas>'; // for IE
     const canvas            = document.getElementById('layer0');
 
     let ctx                 = canvas.getContext('2d');
@@ -190,11 +202,42 @@ function startIt()
     if (first)
     {
         curvedWord = createCurvedWord(curveText.value, curve.value.split(','));
+
         canvasDiv.addEventListener('click', function(e) {
-            console.log("mouse location: ", e.x, e.y)
+            // console.log("mouse location: ", e.x, e.y)
             curvedWord.changeCoordinates(curve.value.split(','));
             curvedWord.changeText(curveText.value)
             curvedWord.draw(ctx, canvas.width, canvas.height);
+        })
+
+        canvasDiv.addEventListener('mousedown', function(e) {
+            mouseButtonPressed = true;
+            mouse_X = e.x;
+            mouse_Y = e.y;
+        })
+
+        canvasDiv.addEventListener('mouseup', function(e) {
+            mouseButtonPressed = false;
+            mouse_X = 0;
+            mouse_Y = 0;
+        })
+
+        canvasDiv.addEventListener('mousemove', function(e) {
+
+            if (!mouseButtonPressed) {
+                return;
+            }
+            let coordinates = curve.value.split(',')
+            let newX = parseFloat(coordinates[2]) + e.movementX;
+            let newY = parseFloat(coordinates[3]) + e.movementY;
+            coordinates[2] = newX.toString();
+            coordinates[3] = newY.toString();
+            curve.value = coordinates.toString();
+            // console.log(coordinates[3]);
+            curvedWord.changeCoordinates(curve.value.split(','))
+            curvedWord.draw(ctx, canvas.width, canvas.height);
+            // console.log(`${e.movementY}, ${coordinates[3]}`);
+            // console.log(coordinates[3]);
         })
 
         // curvedWord.changeCoordinates(curve.value.split(','));
@@ -204,10 +247,6 @@ function startIt()
 
 }
 
-// global vars section
-
-let first = true;
-let curvedWord;
 
 
 
