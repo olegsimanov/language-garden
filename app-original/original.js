@@ -5,11 +5,11 @@ var first = true;
 function startIt()
 {
     canvasDiv = document.getElementById('canvasDiv');
-    canvasDiv.innerHTML = '<canvas id="layer0" width="300" height="300"></canvas>'; //for IE
+    canvasDiv.innerHTML = '<canvas id="layer0" width="700" height="700"></canvas>'; //for IE
     canvas = document.getElementById('layer0');
     ctx = canvas.getContext('2d');
     ctx.fillStyle = "black";
-    ctx.font = "18px arial black";
+    ctx.font = "70px arial blue";
     curve = document.getElementById('curve');
     curveText = document.getElementById('text');
     // $(curve).keyup(function(e) {changeCurve();});
@@ -35,7 +35,7 @@ function drawStack()
 {
     Ribbon = {maxChar: 50, startX: points[0], startY: points[1],
         control1X: points[2], control1Y: points[3],
-        control2X: points[4], control2Y: points[5],
+        control2X: points[2], control2Y: points[3],
         endX: points[6], endY: points[7]};
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -152,7 +152,7 @@ function bezier2(t,startX, startY,control1X,control1Y,control2X,control2Y,endX,e
 }
 function bezier1(t,startX, startY,control1X,control1Y,control2X,control2Y)
 {
-//linear bezier curve plotter; used recursivly in the quadratic bezier curve calculation
+//linear bezier curve plotter; used recursively in the quadratic bezier curve calculation
     this.x = (( 1 - t) * (1 - t) * startX) + (2 * (1 - t) * t * control1X) + (t * t * control2X);
     this.y = (( 1 - t) * (1 - t) * startY) + (2 * (1 - t) * t * control1Y) + (t * t * control2Y);
 
