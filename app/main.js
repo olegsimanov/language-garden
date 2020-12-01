@@ -12,20 +12,7 @@ function createCurvedWord(text, points) {
         // control2X:  points[4],  control2Y:  points[5],
         endX:       points[6],  endY:       points[7],
 
-        accumulatedDistanceFromStart : 0,      // current distance (distance is summed up by calculating the hypotenuse between current letter starting point and next letter starting point)
-
-        // changeCoordinates: function (startX, startY, control1X, control1Y, control2X, control2Y, endX, endY) {
-        //
-        //     this.startX     = startX;
-        //     this.startY     = startY;
-        //     this.control1X  = control1X;
-        //     this.control1Y  = control1Y;
-        //     this.control2X  = control2X;
-        //     this.control2Y  = control2Y;
-        //     this.endX       = endX;
-        //     this.endY       = endY;
-        //
-        // },
+        accumulatedDistanceFromStart : 0,      // current curve length (distance is summed up by calculating the hypotenuse between current letter starting point and next letter starting point)
 
         changeCoordinates: function (points) {
             if (points.length === 8) {
@@ -51,9 +38,9 @@ function createCurvedWord(text, points) {
 
             let customBezierCurveCoordinates = this.calculateCurveCoordinatesUsingCustomCalculations();
 
-            this.drawCurveUsingCustomCalculations(ctx, customBezierCurveCoordinates);
+            // this.drawCurveUsingCustomCalculations(ctx, customBezierCurveCoordinates);
             this.drawWordUsingCustomCalculations(ctx, customBezierCurveCoordinates);
-            // this.drawDebugInfo(ctx);
+            this.drawDebugInfo(ctx);
 
 
         },
@@ -66,22 +53,15 @@ function createCurvedWord(text, points) {
                 ctx.save();
                 ctx.beginPath();
 
-                ctx.moveTo(pointX, pointY);
-                ctx.lineTo(pointX - radius * 2, pointY);
-                ctx.lineTo(pointX - radius * 2, pointY - radius * 2);
-                ctx.lineTo(pointX, pointY - radius * 2);
-                ctx.lineTo(pointX, pointY);
-
-                ctx.strokeStyle = "green"
+                ctx.arc(pointX, pointY, radius, 0, 180);
+                ctx.strokeStyle = "red"
                 ctx.stroke();
 
                 ctx.restore();
 
             }
 
-            drawHandle(ctx, parseFloat(this.startX) + radius * 2, parseFloat(this.startY), radius);
-            drawHandle(ctx, parseFloat(this.control1X), parseFloat(this.control1Y), radius);
-            drawHandle(ctx, parseFloat(this.endX), parseFloat(this.endY), radius);
+            drawHandle(ctx, parseFloat(this.control1X), parseFloat(this.control1Y), 20);
 
         },
 
@@ -145,20 +125,15 @@ function createCurvedWord(text, points) {
             let numberOfLetters                 = truncatedText.length;
             let letterPaddingInPx               = totalPaddingLengthInPx / (numberOfLetters - 1);
 
-            // console.log("Total length in px: " + totalLengthInPx);
-
-            // let curveLength                     = bezierCurve.coordinates[bezierCurve.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
-            // let z                               = 0; // ctx.measureText(truncatedText[0]).width /2; // (curveLength / 2) - (totalLengthInPx / 2);
-            let vi                              = 0; // this.findVirtualIndexOfTheFirstLetter(bezierCurve, bezierCurve.maxVirtualIndex, z);
-
-            for (let letterIndex = 0; letterIndex < numberOfLetters; letterIndex++) {
-                vi = this.drawSingleLetterAt(ctx, bezierCurve, vi, truncatedText[letterIndex], letterPaddingInPx);
+            for (let letterIndex = 0, vi = 0; letterIndex < numberOfLetters; letterIndex++) {
+                const drawBox = letterIndex === 0 || letterIndex === numberOfLetters - 1
+                vi = this.drawSingleLetterAt(ctx, bezierCurve, vi, truncatedText[letterIndex], letterPaddingInPx, drawBox);
             }
 
 
         },
 
-        drawSingleLetterAt: function (ctx, bezierCurve, vi, letter, letterPaddingInPx) {
+        drawSingleLetterAt: function (ctx, bezierCurve, vi, letter, letterPaddingInPx, drawBox) {
 
             let startOfLetter = bezierCurve.coordinates[vi];
 
@@ -178,12 +153,20 @@ function createCurvedWord(text, points) {
             if (radDiff > 0.3) {
                 adjustedRad = endOfLetter.rotation_hypotenuse_accHypotenuse.rad - radDiff / 2;
             }
-            // console.log(truncatedText[letterIndex] + ": " + radDiff);
-
 
             ctx.save();
+            ctx.beginPath();
             ctx.translate(startOfLetter.pointOnTheBezierCurve.x, startOfLetter.pointOnTheBezierCurve.y);
             ctx.rotate(adjustedRad);                                                  // The rotation center point is always the canvas origin. To change the center point, you will need to move the canvas by using the translate() method.
+
+            if (isDebugInfoOn && (drawBox)) {
+                const letterHeight = ctx.measureText(letter).actualBoundingBoxAscent;
+                ctx.fillStyle = "green";
+                ctx.rect(0, 0 - letterHeight, letterWidth, letterHeight);
+                ctx.stroke();
+            }
+
+
             ctx.fillText(letter, 0, 0);
             ctx.restore();
 
@@ -330,7 +313,7 @@ let ctx;                // we use this to draw
 let curveCoordinates;
 let curveText;
 let curvedWord;
-let isDebugInfoOn = false;
+let isDebugInfoOn = true;
 
 
 // ---------------------------------------------------------------------------------------------------------------------
