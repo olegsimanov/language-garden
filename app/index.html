@@ -2,14 +2,6 @@
 
 <html lang="en">
 
-<script type="application/javascript" src="main.js?v=1"></script>
-<script type="application/javascript">
-    window.addEventListener('load', function() {
-        console.log('All assets are loaded')
-        startIt()
-    })
-</script>
-
 <style type="text/css">
 
     @font-face {
@@ -32,6 +24,8 @@
 </head>
 <body>
 
+<div style="font-family: language_garden_regular,serif;"> </div>
+
 <table>
     <TR><TH>Bezier Curve</TH><TD><input size="80" type="text" id="coordinates" name="coordinates" value="100, 500,325,500, 400, 250,800,500"></TD></TR>
 <!--    <TR><TH>Bezier Curve</TH><TD><input size="80" type="text" id="coordinates" name="coordinates" value="0.0, 100, 100, 100, 100, 100, 300, 100"></TD></TR>-->
@@ -40,4 +34,14 @@
 </table>
 
 </body>
+
+<script type="application/javascript" src="main.js?v=1"></script>
+<script type="application/javascript">
+    window.addEventListener('load', function() {
+        console.log('All assets are loaded')
+        startIt()
+    })
+</script>
+
+
 </html>
