@@ -461,8 +461,7 @@ function startIt()
     ctx                     = canvas.getContext('2d');
 
     ctx.fillStyle           = "black";
-    ctx.font                = "200px arial blue";
-    // ctx.font                = "18px arial blue";
+    ctx.font                = "200px language_garden_regular";
 
     curveCoordinates        = document.getElementById('coordinates');
     curveText               = document.getElementById('text');
