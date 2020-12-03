@@ -3,23 +3,40 @@ function createCurvedWord(text, points) {
 
     return {
 
+        // -------------------------------------------------------------------------------------------------------------
+        // curved word data
+        // -------------------------------------------------------------------------------------------------------------
+
         text:       text,
-        maxChar:    50,
 
         startX:     points[0],  startY:     points[1],
         control1X:  points[2],  control1Y:  points[3],
         control2X:  points[2],  control2Y:  points[3],
-        // control2X:  points[4],  control2Y:  points[5],
+        // control2X:  points[4],  control2Y:  points[5],       // we have to keep the second control point in order to be able to support quadratic bezier curve later
         endX:       points[6],  endY:       points[7],
 
-        accumulatedDistanceFromStart : 0,      // current curve length (distance is summed up by calculating the hypotenuse between current letter starting point and next letter starting point)
+
+        accumulatedDistanceFromStart :  0,                      // current curve length (distance is summed up by calculating the hypotenuse between virtual points on the curve)
+        virtualPointsCoordinates:       [],                     // virtual points coordinates on the bezier curve (points: start, control1, control2, end)
+        maxVirtualIndex:                1000,                   // "resolution" - so many virtual dots on the curve will fit inside this.endX and this.startX
+        lettersCoordinates:             [],                     // letters coordinates and data on the bezier curve
+
+
+        selectedHandle:                 -1,
+        handleSelectionRadius:          20,
+
+
+        // -------------------------------------------------------------------------------------------------------------
+        // manipulation methods
+        // -------------------------------------------------------------------------------------------------------------
+
 
         changeCoordinates: function (points) {
             if (points.length === 8) {
                 this.startX     = points[0]; this.startY     = points[1];
                 this.control1X  = points[2]; this.control1Y  = points[3];
                 this.control2X  = points[2]; this.control2Y  = points[3];
-                // this.control2X  = points[4]; this.control2Y  = points[5];
+                // this.control2X  = points[4]; this.control2Y  = points[5];            // we have to keep the second control point in order to be able to support quadratic bezier curve later
                 this.endX       = points[6]; this.endY       = points[7];
             }
         },
@@ -28,125 +45,77 @@ function createCurvedWord(text, points) {
             this.text = text;
         },
 
-        draw: function (ctx, width, height) {
 
-            this.accumulatedDistanceFromStart = 0;                  // resetting accumulated distance of start otherwise it will grow infinitely
-            ctx.clearRect(0, 0, width, height);
+        // -------------------------------------------------------------------------------------------------------------
+        // main method to draw the curved word
+        // -------------------------------------------------------------------------------------------------------------
 
-            // this.drawCurveUsingApi(ctx);
-            // this.drawWordUsingCustomCalculations_original(ctx);
 
-            let customBezierCurveCoordinates = this.calculateCurveCoordinatesUsingCustomCalculations();
+        draw: function (ctx) {
 
-            // this.drawCurveUsingCustomCalculations(ctx, customBezierCurveCoordinates);
-            this.drawWordUsingCustomCalculations(ctx, customBezierCurveCoordinates);
+            this.accumulatedDistanceFromStart   = 0;                    // resetting accumulated distance of start otherwise it will grow infinitely
+            this.virtualPointsCoordinates       = [];                   // resetting virtual points coordinates
+            this.lettersCoordinates             = [];                   // resetting letters coordinates and data
+
+            this.calculateVirtualPointsCoordinates();
+            this.calculateLettersCoordinates(ctx);
+
+            this.drawVirtualPoints(ctx);
+            this.drawWord(ctx);
             this.drawDebugInfo(ctx);
 
-
         },
 
-        drawDebugInfo: function (ctx) {
 
+        // -------------------------------------------------------------------------------------------------------------
+        // calculations functions (output of these functions is used to draw curve and letters
+        // -------------------------------------------------------------------------------------------------------------
 
-            function drawHandle(ctx, pointX, pointY, radius) {
+        calculateVirtualPointsCoordinates: function () {
 
-                ctx.save();
-                ctx.beginPath();
+            for (let vi = 0; vi < this.maxVirtualIndex; vi++) {
 
-                ctx.arc(pointX, pointY, radius, 0, 180);
-                ctx.strokeStyle = "red"
-                ctx.stroke();
-
-                ctx.restore();
-
-            }
-
-            drawHandle(ctx, parseFloat(this.control1X), parseFloat(this.control1Y), 20);
-
-        },
-
-        drawCurveUsingApi: function (ctx) {
-
-            ctx.save();                                                         // saves the entire state of the canvas by pushing the current state onto a stack.
-            ctx.beginPath();                                                    // starts a new path by emptying the list of sub-paths.
-
-            ctx.moveTo(this.startX, this.startY);                               // begins a new sub-path at the point specified by the given (x, y) coordinates
-            ctx.bezierCurveTo(this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-
-            ctx.strokeStyle = "red";
-            ctx.stroke();                                                       // strokes (outlines) the current or given path with the current stroke style
-            ctx.restore();                                                      // restores the most recently saved canvas state by popping the top entry in the drawing state stack. If there is no saved state, this method does nothing.
-
-        },
-
-        calculateCurveCoordinatesUsingCustomCalculations: function () {
-
-            const coordinates       = [];
-            const maxVirtualIndex   = 1000;                                     // "resolution" - so many virtual dots on the curve will fit inside this.endX and this.startX
-
-            for (let vi = 0; vi < maxVirtualIndex; vi++) {
-
-                let currentVirtualIndexCoordinates      = this.calculateQuadraticBezierCurveCoordinates(vi       / maxVirtualIndex, this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-                let nextVirtualIndexCoordinates         = this.calculateQuadraticBezierCurveCoordinates((vi + 1) / maxVirtualIndex, this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
+                let currentVirtualIndexCoordinates      = this.calculateQuadraticBezierCurveCoordinates(vi       / this.maxVirtualIndex, this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
+                let nextVirtualIndexCoordinates         = this.calculateQuadraticBezierCurveCoordinates((vi + 1) / this.maxVirtualIndex, this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
                 let rotation_hypotenuse_accHypotenuse   = this.calculate_Rotation_HypotenuseToNextPoint_And_AccumulativeHypotenuseFromStart(currentVirtualIndexCoordinates, nextVirtualIndexCoordinates);
 
-                coordinates.push( { pointOnTheBezierCurve: currentVirtualIndexCoordinates, nextPointOnTheBezierCurve: nextVirtualIndexCoordinates, rotation_hypotenuse_accHypotenuse: rotation_hypotenuse_accHypotenuse } );
+                this.virtualPointsCoordinates.push( { pointOnTheBezierCurve: currentVirtualIndexCoordinates, nextPointOnTheBezierCurve: nextVirtualIndexCoordinates, rotation_hypotenuse_accHypotenuse: rotation_hypotenuse_accHypotenuse } );
 
             }
 
-            return { coordinates, maxVirtualIndex };
-
         },
 
-
-        drawCurveUsingCustomCalculations: function (ctx, bezierCurve) {
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(bezierCurve.coordinates[0].pointOnTheBezierCurve.x, bezierCurve.coordinates[0].pointOnTheBezierCurve.y)
-
-            for (let vi = 1; vi < bezierCurve.maxVirtualIndex; vi++) {
-                ctx.lineTo(bezierCurve.coordinates[vi].pointOnTheBezierCurve.x, bezierCurve.coordinates[vi].pointOnTheBezierCurve.y)
-            }
-
-            ctx.strokeStyle = "green";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            ctx.restore();
-
-        },
-
-        drawWordUsingCustomCalculations: function (ctx, bezierCurve) {
+        calculateLettersCoordinates: function(ctx) {
 
             const truncatedText                 = this.text.substring(0, this.maxChar);
             let lettersLengthInPx               = Math.round(ctx.measureText(truncatedText).width);
-            let totalLengthInPx                 = bezierCurve.coordinates[bezierCurve.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
+            let totalLengthInPx                 = this.virtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
             let totalPaddingLengthInPx          = totalLengthInPx - lettersLengthInPx;
             let numberOfLetters                 = truncatedText.length;
             let letterPaddingInPx               = totalPaddingLengthInPx / (numberOfLetters - 1);
 
             for (let letterIndex = 0, vi = 0; letterIndex < numberOfLetters; letterIndex++) {
-                const drawBox = letterIndex === 0 || letterIndex === numberOfLetters - 1
-                vi = this.drawSingleLetterAt(ctx, bezierCurve, vi, truncatedText[letterIndex], letterPaddingInPx, drawBox);
+                const [ nextVi, letterCoordinates ] = this.calculateSingleLetterCoordinateAt(ctx, vi, truncatedText[letterIndex], letterPaddingInPx);
+                vi = nextVi;
+                this.lettersCoordinates.push(letterCoordinates);
             }
-
 
         },
 
-        drawSingleLetterAt: function (ctx, bezierCurve, vi, letter, letterPaddingInPx, drawBox) {
+        calculateSingleLetterCoordinateAt: function (ctx, vi, letter, letterPaddingInPx) {
 
-            let startOfLetter = bezierCurve.coordinates[vi];
+            let startOfLetter = this.virtualPointsCoordinates[vi];
 
             let letterWidth = ctx.measureText(letter).width;
-            for (let i = vi, x2 = 0; i < bezierCurve.maxVirtualIndex; i++) {
-                x2 = x2 + bezierCurve.coordinates[i].rotation_hypotenuse_accHypotenuse.hypotenuseToNextPoint;
+            for (let i = vi, x2 = 0; i < this.maxVirtualIndex; i++) {
+                x2 = x2 + this.virtualPointsCoordinates[i].rotation_hypotenuse_accHypotenuse.hypotenuseToNextPoint;
                 if (x2 >= letterWidth) {
                     vi = i;
                     break;
                 }
             }
 
-            let endOfLetter = bezierCurve.coordinates[vi];
+            let endOfLetter = this.virtualPointsCoordinates[vi];
 
             let radDiff = endOfLetter.rotation_hypotenuse_accHypotenuse.rad - startOfLetter.rotation_hypotenuse_accHypotenuse.rad;
             let adjustedRad = startOfLetter.rotation_hypotenuse_accHypotenuse.rad;
@@ -154,104 +123,167 @@ function createCurvedWord(text, points) {
                 adjustedRad = endOfLetter.rotation_hypotenuse_accHypotenuse.rad - radDiff / 2;
             }
 
-            ctx.save();
-            ctx.beginPath();
-            ctx.translate(startOfLetter.pointOnTheBezierCurve.x, startOfLetter.pointOnTheBezierCurve.y);
-            ctx.rotate(adjustedRad);                                                  // The rotation center point is always the canvas origin. To change the center point, you will need to move the canvas by using the translate() method.
 
-            if (isDebugInfoOn && (drawBox)) {
-                const letterHeight = ctx.measureText(letter).actualBoundingBoxAscent;
-                ctx.fillStyle = "green";
-                ctx.rect(0, 0 - letterHeight, letterWidth, letterHeight);
-                ctx.stroke();
-            }
-
-
-            ctx.fillText(letter, 0, 0);
-            ctx.restore();
-
-
-            for (let i = vi, x2 = 0; i < bezierCurve.maxVirtualIndex; i++) {
-                x2 = x2 + bezierCurve.coordinates[i].rotation_hypotenuse_accHypotenuse.hypotenuseToNextPoint;
+            for (let i = vi, x2 = 0; i < this.maxVirtualIndex; i++) {
+                x2 = x2 + this.virtualPointsCoordinates[i].rotation_hypotenuse_accHypotenuse.hypotenuseToNextPoint;
                 if (x2 >= letterPaddingInPx) {
                     vi = i;
                     break;
                 }
             }
-            return vi;
+            return [ vi, { start: startOfLetter, end: endOfLetter, rad: adjustedRad, height: ctx.measureText(letter).actualBoundingBoxAscent, width: letterWidth } ];
         },
 
         // -------------------------------------------------------------------------------------------------------------
-        // archived functions
+        // drawing functions (they are using output of calculation functions to draw curve and letters
         // -------------------------------------------------------------------------------------------------------------
 
-        // drawWordUsingCustomCalculations_original: function (ctx) {
-        //
-        //     const bezierCurveCoordinates    = [];
-        //     const maxVirtualIndex           = 1000;
-        //     const truncatedText             = this.text.substring(0, this.maxChar);
-        //
-        //     for (let vi = 0; vi < maxVirtualIndex; vi++) {
-        //
-        //         let currentVirtualIndexCoordinates  = this.calculateQuadraticBezierCurveCoordinates(vi       / maxVirtualIndex, this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-        //         let nextVirtualIndexCoordinates     = this.calculateQuadraticBezierCurveCoordinates((vi + 1) / maxVirtualIndex, this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-        //         let rotation_distance               = this.calculate_Rotation_HypotenuseToNextPoint_And_AccumulativeHypotenuseFromStart(currentVirtualIndexCoordinates, nextVirtualIndexCoordinates);
-        //
-        //         bezierCurveCoordinates.push( { pointOnTheBezierCurve: currentVirtualIndexCoordinates, nextPointOnTheBezierCurve: nextVirtualIndexCoordinates, rotationAndDistanceOnThePath: rotation_distance } );
-        //
-        //     }
-        //
-        //
-        //     let numberOfLetters                 = truncatedText.length;
-        //
-        //     let letterPaddingInPx               = ctx.measureText(" ").width / 4;
-        //     let totalPaddingLengthInPx          = (numberOfLetters - 1) * letterPaddingInPx;
-        //     let lettersLengthInPx               = Math.round(ctx.measureText(truncatedText).width);
-        //     let totalLengthInPx                 = lettersLengthInPx + totalPaddingLengthInPx;
-        //     let hypotenuseDistOfTheLastPoint    = bezierCurveCoordinates[maxVirtualIndex - 1].rotationAndDistanceOnThePath.distanceFromStart;
-        //     let z                               = (hypotenuseDistOfTheLastPoint / 2) - (totalLengthInPx / 2);
-        //
-        //     let vi                              = this.findVirtualIndexOfTheFirstLetter(bezierCurveCoordinates, maxVirtualIndex, z);
-        //
-        //     for (let letterIndex = 0; letterIndex < numberOfLetters; letterIndex++) {
-        //
-        //         ctx.save();
-        //         ctx.translate(bezierCurveCoordinates[vi].pointOnTheBezierCurve.x, bezierCurveCoordinates[vi].pointOnTheBezierCurve.y);
-        //         ctx.rotate(bezierCurveCoordinates[vi].rotationAndDistanceOnThePath.rad);
-        //         ctx.fillText(truncatedText[letterIndex], 0, 0);
-        //         ctx.restore();
-        //
-        //         let widthOfCurrentLetterPlusPaddingInPx = ctx.measureText(truncatedText[letterIndex]).width + letterPaddingInPx;
-        //         let x2 = 0;
-        //         for (let i = vi; i < maxVirtualIndex; i++) {
-        //             x2 = x2 + bezierCurveCoordinates[i].rotationAndDistanceOnThePath.hypotenuseToNextPoint;
-        //             if (x2 >= widthOfCurrentLetterPlusPaddingInPx) {
-        //                 vi = i;
-        //                 break;
-        //             }
-        //         }
-        //     }
-        //
-        //
-        // },
+        drawVirtualPoints: function (ctx) {
 
-        // -------------------------------------------------------------------------------------------------------------
-        // helper functions
-        // -------------------------------------------------------------------------------------------------------------
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(this.virtualPointsCoordinates[0].pointOnTheBezierCurve.x, this.virtualPointsCoordinates[0].pointOnTheBezierCurve.y)
 
-        findVirtualIndexOfTheFirstLetter: function (bezierCurveWordsCoordinates, maxVirtualIndex, z) {
+            for (let vi = 1; vi < this.maxVirtualIndex; vi++) {
+                ctx.lineTo(this.virtualPointsCoordinates[vi].pointOnTheBezierCurve.x, this.virtualPointsCoordinates[vi].pointOnTheBezierCurve.y)
+            }
 
-            let i;
-            for (i = 0; i < maxVirtualIndex; i++) {
+            ctx.strokeStyle = "green";
+            ctx.lineWidth = 1;
 
-                if (bezierCurveWordsCoordinates.coordinates[i].rotation_hypotenuse_accHypotenuse.distanceFromStart >= z) {
-                    break;
-                }
+            ctx.stroke();
+            ctx.restore();
+
+        },
+
+        drawWord: function (ctx) {
+
+            for (let letterIndex = 0; letterIndex < this.text.length; letterIndex++) {
+                this.drawSingleLetterAt(ctx, letterIndex);
+            }
+
+        },
+
+        drawSingleLetterAt: function (ctx, letterIndex) {
+
+            const letterCoordinates = this.lettersCoordinates[letterIndex];
+            const letter = this.text[letterIndex];
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.translate(
+                letterCoordinates.start.pointOnTheBezierCurve.x,
+                letterCoordinates.start.pointOnTheBezierCurve.y
+            );
+            ctx.rotate(letterCoordinates.rad);                                                  // The rotation center point is always the canvas origin. To change the center point, you will need to move the canvas by using the translate() method.
+            if (letterIndex === 0 || letterIndex === this.text.length - 1 ) {
+                ctx.fillStyle = "red";
+            }
+            ctx.fillText(letter, 0, 0);
+            ctx.restore();
+
+        },
+
+        drawDebugInfo: function (ctx) {
+
+            this.drawRoundHandle(ctx, this.control1X, this.control1Y, this.handleSelectionRadius);
+            this.drawSquareHandle(ctx, this.lettersCoordinates, 0);
+            this.drawSquareHandle(ctx, this.lettersCoordinates, this.text.length - 1);
+
+        },
+
+        drawRoundHandle: function (ctx, pointX, pointY, radius) {
+
+            ctx.save();
+            ctx.beginPath();
+
+            ctx.arc(pointX, pointY, radius, 0, 180);
+            ctx.strokeStyle = "red"
+            ctx.stroke();
+
+            if (ctx.isPointInPath(this.mouse_X, this.mouse_Y)) {
+
+                this.mouseIsOverThisWord = true;
 
             }
-            return i;
+
+            ctx.restore();
+
         },
 
+        drawSquareHandle: function (ctx, lettersCoordinates, letterIndex) {
+
+            ctx.save();
+            ctx.beginPath();
+
+            let letterCoordinates = lettersCoordinates[letterIndex];
+            let letterHeight = letterCoordinates.height;
+            let letterWidth = letterCoordinates.width;
+
+            ctx.translate(
+                letterCoordinates.start.pointOnTheBezierCurve.x,
+                letterCoordinates.start.pointOnTheBezierCurve.y
+            );
+            ctx.rotate(letterCoordinates.rad);                                                  // The rotation center point is always the canvas origin. To change the center point, you will need to move the canvas by using the translate() method.
+
+            ctx.strokeStyle = "red"
+            ctx.strokeRect(0, 0, letterWidth, -letterHeight);
+
+            ctx.restore();
+
+        },
+
+
+        // -------------------------------------------------------------------------------------------------------------
+        // intersection functions
+        // -------------------------------------------------------------------------------------------------------------
+
+
+        isInsideCircle: function (ctx, mouse_x, mouse_y, point_x, point_y, radius) {
+
+            const circle = new Path2D();
+            circle.arc(point_x, point_y, radius, 0, 2 * Math.PI)
+            return ctx.isPointInPath(circle, mouse_x, mouse_y);
+
+        },
+
+
+        // -------------------------------------------------------------------------------------------------------------
+        // mouse listener methods
+        // -------------------------------------------------------------------------------------------------------------
+
+        mouse_X:                        -1,
+        mouse_Y:                        -1,
+        mouseIsOverThisWord:            false,
+        mouseButtonIsDown:              false,
+        mousePressedInsideFirstLetter:  false,
+        mousePressedInsideLastLetter:   false,
+
+        mouseMove: function(e, ctx) {
+
+            this.mouse_X = e.x;
+            this.mouse_Y = e.y;
+            console.log(e.x + ", " + e.y);
+
+            if (this.mouseButtonIsDown) {
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                curvedWord.draw(ctx);
+            }
+
+        },
+
+        mouseButtonDown: function(e) {
+
+            if (!this.mouseIsOverThisWord) {
+                return;
+            }
+            this.mouseButtonIsDown = true;
+        },
+
+        mouseButtonUp: function(e) {
+            this.mouseButtonIsDown = false;
+        },
 
         // -------------------------------------------------------------------------------------------------------------
         // calculations helper functions
@@ -320,123 +352,6 @@ let isDebugInfoOn = true;
 // mouse handling logic
 // ---------------------------------------------------------------------------------------------------------------------
 
-function mouseClickListener(e) {
-
-    // console.log("mouse location: ", e.x, e.y)
-    curvedWord.changeCoordinates(curveCoordinates.value.split(','));
-    curvedWord.changeText(curveText.value)
-    curvedWord.draw(ctx, canvas.width, canvas.height);
-
-}
-
-let mouseButtonPressed = false;
-let mouse_X = 0;
-let mouse_Y = 0;
-let movingPoint = -1;
-let radius = 50;
-
-function mouseButtonDownListener(e) {
-
-    mouseButtonPressed = true;
-    mouse_X = e.x - 14;
-    mouse_Y = e.y - 60;
-
-    let coordinates         = curveCoordinates.value.split(',')
-
-    if (isCloseToThePoint(mouse_X, mouse_Y, parseFloat(coordinates[0]) + radius * 2, parseFloat(coordinates[1]), radius)) {
-
-        movingPoint = 0;
-        // console.log("is close to the start point");
-
-    } else if (isCloseToThePoint(mouse_X, mouse_Y, parseFloat(coordinates[2]) + radius, parseFloat(coordinates[3]), radius)) {
-
-        movingPoint = 1;
-        // console.log("is close to the middle point point")
-
-    } else if (isCloseToThePoint(mouse_X, mouse_Y, parseFloat(coordinates[6]), parseFloat(coordinates[7]), radius)) {
-
-        movingPoint = 2;
-        // console.log("is close to the end point")
-
-    }
-    else {
-        movingPoint = 3;
-        // console.log("moving the whole word")
-    }
-
-
-}
-
-function mouseButtonUpListener(e) {
-    mouseButtonPressed = false;
-    mouse_X = 0;
-    mouse_Y = 0;
-    movingPoint = -1;
-}
-
-function mouseMoveListener(e) {
-
-    if (!mouseButtonPressed) {
-        return;
-    }
-
-    let coordinates         = curveCoordinates.value.split(',')
-
-    if (movingPoint === 0) {
-
-        // moving beginning point
-        coordinates[0]          = (parseFloat(coordinates[0]) + e.movementX).toString();
-        coordinates[1]          = (parseFloat(coordinates[1]) + e.movementY).toString();
-
-    } else if (movingPoint === 1) {
-
-        // moving middle point
-        coordinates[2]          = (parseFloat(coordinates[2]) + e.movementX).toString();
-        coordinates[3]          = (parseFloat(coordinates[3]) + e.movementY).toString();
-
-    } else if (movingPoint === 2) {
-
-        // moving right outer point
-        coordinates[6]          = (parseFloat(coordinates[6]) + e.movementX).toString();
-        coordinates[7]          = (parseFloat(coordinates[7]) + e.movementY).toString();
-
-    } else if (movingPoint === 3) {
-
-        // moving the whole word
-
-        // moving beginning point
-        coordinates[0]          = (parseFloat(coordinates[0]) + e.movementX).toString();
-        coordinates[1]          = (parseFloat(coordinates[1]) + e.movementY).toString();
-
-        // moving middle point
-        coordinates[2]          = (parseFloat(coordinates[2]) + e.movementX).toString();
-        coordinates[3]          = (parseFloat(coordinates[3]) + e.movementY).toString();
-
-        // moving right outer point
-        coordinates[6]          = (parseFloat(coordinates[6]) + e.movementX).toString();
-        coordinates[7]          = (parseFloat(coordinates[7]) + e.movementY).toString();
-
-
-    }
-
-    curveCoordinates.value  = coordinates.toString();
-
-
-    // console.log(coordinates[3]);
-    curvedWord.changeCoordinates(curveCoordinates.value.split(','))
-    curvedWord.draw(ctx, canvas.width, canvas.height);
-    // console.log(`${e.movementY}, ${coordinates[3]}`);
-    // console.log(coordinates[3]);
-}
-
-function isCloseToThePoint(mouse_x, mouse_y, point_x, point_y, radius) {
-
-    return (mouse_x < point_x && mouse_x > point_x - radius * 2)
-        && (mouse_y > point_y - radius * 2 && mouse_y < point_y + 100)
-
-}
-
-
 // -----------------------------------------------------------------------------------------------------------------------
 
 
@@ -452,10 +367,10 @@ function startIt()
 
     canvas                  = document.getElementById('layer0');
 
-    canvas.addEventListener('click',     mouseClickListener)
-    canvas.addEventListener('mousedown', mouseButtonDownListener)
-    canvas.addEventListener('mouseup',   mouseButtonUpListener)
-    canvas.addEventListener('mousemove', mouseMoveListener)
+    canvas.addEventListener('click',     function (e) {})
+    canvas.addEventListener('mousedown', function (e) {curvedWord.mouseButtonDown(e);})
+    canvas.addEventListener('mouseup',   function (e) {curvedWord.mouseButtonUp(e);})
+    canvas.addEventListener('mousemove', function (e) {curvedWord.mouseMove(e);})
 
 
     ctx                     = canvas.getContext('2d');
@@ -468,7 +383,8 @@ function startIt()
 
     curvedWord = createCurvedWord(curveText.value, curveCoordinates.value.split(','));
     // curvedWord.changeCoordinates(curveCoordinates.value.split(','));
-    curvedWord.draw(ctx, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    curvedWord.draw(ctx);
 
     first = false;
 
