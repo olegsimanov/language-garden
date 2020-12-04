@@ -5,11 +5,12 @@ var first = true;
 function startIt()
 {
     canvasDiv = document.getElementById('canvasDiv');
-    canvasDiv.innerHTML = '<canvas id="layer0" width="700" height="700"></canvas>'; //for IE
+    canvasDiv.innerHTML = '<canvas id="layer0" width="1000" height="800"></canvas>'; //for IE
     canvas = document.getElementById('layer0');
     ctx = canvas.getContext('2d');
     ctx.fillStyle = "black";
-    ctx.font = "70px arial blue";
+    // ctx.font = "70px arial blue";
+    ctx.font = "200px language_garden_regular";
     curve = document.getElementById('curve');
     curveText = document.getElementById('text');
     // $(curve).keyup(function(e) {changeCurve();});
