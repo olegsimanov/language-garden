@@ -20,7 +20,6 @@ function createCurvedWord(text, points) {
         maxVirtualIndex:                1000,                   // "resolution" - so many virtual dots on the curve will fit inside this.endX and this.startX
         virtualPointsCoordinates:       [],                     // virtual points coordinates on the bezier curve (curve defined by points: start, control1, control2, end)
         lettersCoordinates:             [],                     // letters coordinates and data on the bezier curve
-        letterPaddingInPx:              0,
 
 
         // -------------------------------------------------------------------------------------------------------------
@@ -50,17 +49,13 @@ function createCurvedWord(text, points) {
 
         draw: function (ctx) {
 
-            this.accumulatedDistanceFromStart   = 0;                    // resetting accumulated distance of start otherwise it will grow infinitely
-            this.virtualPointsCoordinates       = [];                   // resetting virtual points coordinates
-            this.lettersCoordinates             = [];                   // resetting letters coordinates and data
-
-            this.calculateVirtualPointsCoordinates();
-            this.calculateLettersCoordinates(ctx);
+            this.virtualPointsCoordinates       = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
+            this.lettersCoordinates             = this.calculateLettersCoordinates(ctx, this.virtualPointsCoordinates);
 
             // this.drawBezierCurveUsingAPI(ctx);                       // for comparison purposes
 
-            this.drawVirtualPoints(ctx);
             this.drawWord(ctx);
+            this.drawVirtualPoints(ctx);
             this.drawDebugInfo(ctx);
 
         },
@@ -70,54 +65,64 @@ function createCurvedWord(text, points) {
         // calculations functions (output of these functions is used to draw curve and letters
         // -------------------------------------------------------------------------------------------------------------
 
-        calculateVirtualPointsCoordinates: function () {
+        calculateVirtualPointsCoordinates: function (startX, startY, control1X, control1Y, control2X, control2Y, endX, endY) {
+
+            const virtualPointsCoordinates = [];
 
             for (let vi = 0; vi < this.maxVirtualIndex; vi++) {
 
-                let currentVirtualIndexCoordinates      = this.calculateQuadraticBezierCurveCoordinates(vi       / this.maxVirtualIndex, this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-                let nextVirtualIndexCoordinates         = this.calculateQuadraticBezierCurveCoordinates((vi + 1) / this.maxVirtualIndex, this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
+                let currentVirtualIndexCoordinates      = this.calculateQuadraticBezierCurveCoordinates(vi       / this.maxVirtualIndex, startX, startY, control1X, control1Y, control2X, control2Y, endX, endY);
+                let nextVirtualIndexCoordinates         = this.calculateQuadraticBezierCurveCoordinates((vi + 1) / this.maxVirtualIndex, startX, startY, control1X, control1Y, control2X, control2Y, endX, endY);
                 let rotation_hypotenuse_accHypotenuse   = this.calculate_Rotation_HypotenuseToNextPoint_And_AccumulativeHypotenuseFromStart(currentVirtualIndexCoordinates, nextVirtualIndexCoordinates);
 
-                this.virtualPointsCoordinates.push( { pointOnTheBezierCurve: currentVirtualIndexCoordinates, nextPointOnTheBezierCurve: nextVirtualIndexCoordinates, rotation_hypotenuse_accHypotenuse: rotation_hypotenuse_accHypotenuse } );
+                virtualPointsCoordinates.push( { pointOnTheBezierCurve: currentVirtualIndexCoordinates, nextPointOnTheBezierCurve: nextVirtualIndexCoordinates, rotation_hypotenuse_accHypotenuse: rotation_hypotenuse_accHypotenuse } );
 
             }
 
+            this.accumulatedDistanceFromStart = 0;      // resetting accumulated distance from start otherwise it will grow infinitely
+
+            return virtualPointsCoordinates;
+
         },
 
-        calculateLettersCoordinates: function(ctx) {
+        calculateLettersCoordinates: function(ctx, virtualPointsCoordinates) {
 
-            this.letterPaddingInPx = this.calculatePaddingBetweenLetters(ctx, this.text.length - 1);
+            const lettersCoordinates    = [];
+            const letterPaddingInPx     = this.calculatePaddingBetweenLetters(ctx, virtualPointsCoordinates, this.text.length - 1);
 
             for (let letterIndex = 0, vi = 0; letterIndex < this.text.length; letterIndex++) {
-                const [ nextVi, letterCoordinates ] = this.calculateSingleLetterCoordinateAt(ctx, vi, this.text[letterIndex], this.letterPaddingInPx);
+                const [ nextVi, letterCoordinates ] = this.calculateSingleLetterCoordinateAt(ctx, virtualPointsCoordinates, vi, this.text[letterIndex], letterPaddingInPx);
                 vi = nextVi;
-                this.lettersCoordinates.push(letterCoordinates);
+                lettersCoordinates.push(letterCoordinates);
             }
+
+            return lettersCoordinates;
 
         },
 
-        calculatePaddingBetweenLetters: function (ctx, numberOfLetters) {
+        calculatePaddingBetweenLetters: function (ctx, virtualPointsCoordinates, numberOfLetters) {
 
             const lettersLengthInPx         = Math.round(ctx.measureText(this.text).width);
-            const totalLengthInPx           = this.virtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
+            const totalLengthInPx           = virtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
             const totalPaddingLengthInPx    = totalLengthInPx - lettersLengthInPx;
+
             return totalPaddingLengthInPx / numberOfLetters;
             
         },
 
-        calculateSingleLetterCoordinateAt: function (ctx, vi, letter, letterPaddingInPx) {
+        calculateSingleLetterCoordinateAt: function (ctx, virtualPointsCoordinates, vi, letter, letterPaddingInPx) {
 
-            const startOfLetter     = this.virtualPointsCoordinates[vi];
+            const startOfLetter     = virtualPointsCoordinates[vi];
 
             const letterWidth       = ctx.measureText(letter).width;
 
-            vi                      = this.findVirtualPointIndexAfterDistance(vi, letterWidth / 2);      // middle of letter virtual point index
-            const middleOfLetter    = this.virtualPointsCoordinates[vi];
+            vi                      = this.findVirtualPointIndexAfterDistance(virtualPointsCoordinates, vi, letterWidth / 2);      // middle of letter virtual point index
+            const middleOfLetter    = virtualPointsCoordinates[vi];
 
-            vi                      = this.findVirtualPointIndexAfterDistance(vi, letterWidth / 2);                                          // end of letter virtual point index
-            const endOfLetter       = this.virtualPointsCoordinates[vi];
+            vi                      = this.findVirtualPointIndexAfterDistance(virtualPointsCoordinates, vi, letterWidth / 2);                                          // end of letter virtual point index
+            const endOfLetter       = virtualPointsCoordinates[vi];
 
-            vi                      = this.findVirtualPointIndexAfterDistance(vi, letterPaddingInPx);                                    // start of next letter virtual point index
+            vi                      = this.findVirtualPointIndexAfterDistance(virtualPointsCoordinates, vi, letterPaddingInPx);                                    // start of next letter virtual point index
 
             return [ vi, {
                         start:  startOfLetter,
@@ -130,10 +135,10 @@ function createCurvedWord(text, points) {
                 ];
         },
 
-        findVirtualPointIndexAfterDistance: function(vi, distanceToTheRightFromTheVirtualPoint) {
+        findVirtualPointIndexAfterDistance: function(virtualPointsCoordinates, vi, distanceToTheRightFromTheVirtualPoint) {
 
             for (let i = vi, x2 = 0; i < this.maxVirtualIndex; i++) {
-                x2 = x2 + this.virtualPointsCoordinates[i].rotation_hypotenuse_accHypotenuse.hypotenuseToNextPoint;
+                x2 = x2 + virtualPointsCoordinates[i].rotation_hypotenuse_accHypotenuse.hypotenuseToNextPoint;
                 if (x2 >= distanceToTheRightFromTheVirtualPoint) {
                     return i;
                 }
@@ -236,23 +241,29 @@ function createCurvedWord(text, points) {
 
                     const oldStartX = this.startX;
                     this.startX -= xDiff;
+                    this.startY -= yDiff;
 
                     // checking movement on the X scale so it's between word start and end points!
                     if (this.startX > this.control1X) {
                         this.startX = this.control1X;
                     }
 
-                    let newLettersPadding = this.calculatePaddingBetweenLetters(ctx, this.text.length - 1);
+                    const newVirtualPointsCoordinates   = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
+                    // const newCurveLength                = newVirtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
+                    // const currentCurveLength            = this.virtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
+                    // const currentLetterPaddingInPx      = this.calculatePaddingBetweenLetters(ctx, this.virtualPointsCoordinates, this.text.length - 1);
+                    const newLettersPadding             = this.calculatePaddingBetweenLetters(ctx, newVirtualPointsCoordinates, this.text.length - 1);
                     if (newLettersPadding < 0.1 && xDiff < 0) {
-                        console.log("adjusting startX from: " + this.startX + " to " + oldStartX);
+                        // console.log("adjusting startX from: " + this.startX + " to " + oldStartX);
                         this.startX = oldStartX;        // rolling back previous value
                     }
 
-                    console.log("startX: " + this.startX + ", new padding: " + newLettersPadding + ", current padding: " + this.letterPaddingInPx + ", xDiff: " + xDiff)
-                    this.startY -= yDiff;
+                    // console.log(" startX: " + this.startX + ", new padding: " + newLettersPadding + ", current padding: " + currentLetterPaddingInPx + ", new curve distance: " + newCurveLength + ", current curve distance: " + currentCurveLength + ", xDiff: " + xDiff)
+
 
                 } else if (this.mouseIsOverLastLetter) {
 
+                    const oldEndX = this.endX;
                     this.endX -= xDiff;
                     this.endY -= yDiff;
 
@@ -260,6 +271,20 @@ function createCurvedWord(text, points) {
                     if (this.endX < this.control1X) {
                         this.endX = this.control1X;
                     }
+
+                    const newVirtualPointsCoordinates   = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
+                    // const newCurveLength                = newVirtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
+                    // const currentCurveLength            = this.virtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
+                    // const currentLetterPaddingInPx      = this.calculatePaddingBetweenLetters(ctx, this.virtualPointsCoordinates, this.text.length - 1);
+                    const newLettersPadding             = this.calculatePaddingBetweenLetters(ctx, newVirtualPointsCoordinates, this.text.length - 1);
+                    if (newLettersPadding < 0.1 && xDiff >= 0) {
+                        // console.log("adjusting endX from: " + this.endX + " to " + oldEndX);
+                        this.endX = oldEndX;            // rolling back previous value
+                    }
+
+                    // console.log(" endX: " + this.endX + ", new padding: " + newLettersPadding + ", current padding: " + currentLetterPaddingInPx + ", new curve distance: " + newCurveLength + ", current curve distance: " + currentCurveLength + ", xDiff: " + xDiff)
+
+
 
                 } else if (this.mouseIsOverMiddleHandler) {
 
@@ -296,7 +321,6 @@ function createCurvedWord(text, points) {
                     this.control2Y = this.control1Y;
 
                 }
-
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 curveCoordinates.value = [this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY].join(',');
@@ -386,8 +410,8 @@ function createCurvedWord(text, points) {
         drawDebugInfo: function (ctx) {
 
             this.drawRoundHandle(ctx, this.control1X, this.control1Y, this.handleSelectionRadius);
-            // this.drawSquareHandle(ctx, this.lettersCoordinates, 0);
-            // this.drawSquareHandle(ctx, this.lettersCoordinates, this.text.length - 1);
+            this.drawSquareHandle(ctx, this.lettersCoordinates, 0);
+            this.drawSquareHandle(ctx, this.lettersCoordinates, this.text.length - 1);
 
         },
 
