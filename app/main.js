@@ -20,6 +20,9 @@ function createCurvedWord(text, points) {
         maxVirtualIndex:                1000,                   // "resolution" - so many virtual dots on the curve will fit inside this.endX and this.startX
         virtualPointsCoordinates:       [],                     // virtual points coordinates on the bezier curve (curve defined by points: start, control1, control2, end)
         lettersCoordinates:             [],                     // letters coordinates and data on the bezier curve
+        letterBoxPaths:                   [],                     // letter 2d shapes
+        bezierCurveControlPointPath:        null,
+        handleSelectionRadius:          20,
 
 
         // -------------------------------------------------------------------------------------------------------------
@@ -51,12 +54,13 @@ function createCurvedWord(text, points) {
 
             this.virtualPointsCoordinates       = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
             this.lettersCoordinates             = this.calculateLettersCoordinates(ctx, this.virtualPointsCoordinates);
+            this.letterBoxPaths                 = this.calculateLetterBoxPaths(this.lettersCoordinates);
+            this.bezierCurveControlPointPath    = this.calculateBezierCurveControlPointPath(this.control1X, this.control1Y, this.handleSelectionRadius);
 
-            // this.drawBezierCurveUsingAPI(ctx);                       // for comparison purposes
-
-            this.drawWord(ctx);
-            // this.drawVirtualPoints(ctx);
-            this.drawDebugInfo(ctx);
+            // this.drawBezierCurveUsingAPI(ctx);                                   // for comparison purposes
+            this.drawWord(ctx, this.lettersCoordinates, this.letterBoxPaths);
+            this.drawVirtualPoints(ctx, this.virtualPointsCoordinates);
+            this.drawDebugInfo(ctx, this.letterBoxPaths, this.bezierCurveControlPointPath);
 
         },
 
@@ -148,18 +152,67 @@ function createCurvedWord(text, points) {
 
         },
 
+        calculateLetterBoxPaths: function (lettersCoordinates) {
+
+            const lettersBoxes = [];
+
+            for (let letterIndex = 0; letterIndex < this.text.length; letterIndex++) {
+                const letterBox = this.calculateLetterBoxAt(lettersCoordinates, letterIndex);
+                lettersBoxes.push(letterBox);
+            }
+
+            return lettersBoxes;
+
+        },
+
+        calculateLetterBoxAt: function (lettersCoordinates, letterIndex) {
+
+            const letterCoordinates = lettersCoordinates[letterIndex];
+
+            const alpha = - letterCoordinates.middle.rotation_hypotenuse_accHypotenuse.rad;
+            // const alpha = letterCoordinates.middle.rotation_hypotenuse_accHypotenuse.rad;
+            const beta = (90 * Math.PI / 180) - alpha ;
+            const c = letterCoordinates.height / 2;
+            const a = c * Math.sin(alpha);
+            const b = c * Math.sin(beta);
+
+            const zeroX = letterCoordinates.middle.pointOnTheBezierCurve.x;
+            const zeroY = letterCoordinates.middle.pointOnTheBezierCurve.y;
+
+            const letterBox = new Path2D();
+            letterBox.moveTo(zeroX + a, zeroY + b);
+            letterBox.lineTo(zeroX + b + a, zeroY + b - a);
+            letterBox.lineTo(zeroX + b - a, zeroY - b - a);
+            letterBox.lineTo(zeroX - b - a, zeroY - b + a)
+            letterBox.lineTo(zeroX - b + a, zeroY + b + a);
+            letterBox.closePath();
+
+            return letterBox;
+
+        },
+
+        calculateBezierCurveControlPointPath: function (pointX, pointY, radius) {
+
+            const path = new Path2D();
+            path.arc(pointX, pointY, radius, 0, 180);
+            return path;
+
+        },
+
+
+
         // -------------------------------------------------------------------------------------------------------------
-        // drawing functions (they are using output of calculation functions to draw curve and letters
+        // drawing functions (they are using 2d paths or directly calculations)
         // -------------------------------------------------------------------------------------------------------------
 
-        drawVirtualPoints: function (ctx) {
+        drawVirtualPoints: function (ctx, virtualPointsCoordinates) {
 
             ctx.save();
             ctx.beginPath();
-            ctx.moveTo(this.virtualPointsCoordinates[0].pointOnTheBezierCurve.x, this.virtualPointsCoordinates[0].pointOnTheBezierCurve.y)
+            ctx.moveTo(virtualPointsCoordinates[0].pointOnTheBezierCurve.x, virtualPointsCoordinates[0].pointOnTheBezierCurve.y)
 
             for (let vi = 1; vi < this.maxVirtualIndex; vi++) {
-                ctx.lineTo(this.virtualPointsCoordinates[vi].pointOnTheBezierCurve.x, this.virtualPointsCoordinates[vi].pointOnTheBezierCurve.y)
+                ctx.lineTo(virtualPointsCoordinates[vi].pointOnTheBezierCurve.x, virtualPointsCoordinates[vi].pointOnTheBezierCurve.y)
             }
 
             ctx.strokeStyle = "green";
@@ -170,33 +223,87 @@ function createCurvedWord(text, points) {
 
         },
 
-        drawWord: function (ctx) {
+        drawWord: function (ctx, lettersCoordinates, lettersBoxes) {
 
             for (let letterIndex = 0; letterIndex < this.text.length; letterIndex++) {
-                this.drawSingleLetterAt(ctx, letterIndex);
+                // this.drawSingleLetterBoxAt(ctx, lettersBoxes, letterIndex);
+                this.drawSingleLetterAt(ctx, lettersCoordinates, letterIndex);
             }
 
         },
 
-        drawSingleLetterAt: function (ctx, letterIndex) {
+        drawSingleLetterBoxAt: function (ctx, letterBoxPaths, letterIndex) {
 
-            const letterCoordinates = this.lettersCoordinates[letterIndex];
+            const letterBox = letterBoxPaths[letterIndex];
+
+            ctx.save();
+            ctx.beginPath();
+            if (letterIndex === 0 || letterIndex === this.text.length - 1 ) {
+                ctx.strokeStyle = "green";
+            }
+            ctx.stroke(letterBox)
+            ctx.restore();
+
+        },
+
+        drawSingleLetterAt: function (ctx, lettersCoordinates, letterIndex) {
+
+            const letterCoordinates = lettersCoordinates[letterIndex];
             const letter = this.text[letterIndex];
 
             ctx.save();
             ctx.beginPath();
             ctx.translate(
-                letterCoordinates.start.pointOnTheBezierCurve.x,
-                letterCoordinates.start.pointOnTheBezierCurve.y
+                letterCoordinates.middle.pointOnTheBezierCurve.x,
+                letterCoordinates.middle.pointOnTheBezierCurve.y
             );
             ctx.rotate(letterCoordinates.rad);                                                  // The rotation center point is always the canvas origin. To change the center point, you will need to move the canvas by using the translate() method.
             if (letterIndex === 0 || letterIndex === this.text.length - 1 ) {
                 ctx.fillStyle = "red";
             }
-            ctx.fillText(letter, 0, 0);
+            ctx.fillText(letter, - letterCoordinates.width / 2, letterCoordinates.height / 2);
             ctx.restore();
 
         },
+
+        // -------------------------------------------------------------------------------------------------------------
+        // meta data drawing functions
+        // -------------------------------------------------------------------------------------------------------------
+
+        drawBezierCurveUsingAPI: function(ctx) {
+
+            ctx.save();
+            ctx.beginPath();
+
+            ctx.moveTo(this.startX, this.startY)
+            ctx.bezierCurveTo(this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
+
+            ctx.strokeStyle = "purple";
+            ctx.stroke();
+            ctx.restore();
+
+        },
+
+        drawDebugInfo: function (ctx, letterBoxPaths, bezierCurveControlPointPath) {
+
+            this.drawRoundHandle(ctx, bezierCurveControlPointPath);
+            this.drawSingleLetterBoxAt(ctx, letterBoxPaths, 0);
+            this.drawSingleLetterBoxAt(ctx, letterBoxPaths, this.text.length - 1);
+
+        },
+
+        drawRoundHandle: function (ctx, bezierCurveControlPointPath) {
+
+            ctx.save();
+            ctx.beginPath();
+
+            ctx.strokeStyle = "red"
+            ctx.stroke(bezierCurveControlPointPath);
+
+            ctx.restore();
+
+        },
+
 
         // -------------------------------------------------------------------------------------------------------------
         // mouse listener methods
@@ -210,20 +317,19 @@ function createCurvedWord(text, points) {
         mouseButtonIsDown:              false,
         mousePressedInsideFirstLetter:  false,
         mousePressedInsideLastLetter:   false,
-        handleSelectionRadius:          20,
 
 
         mouseMove: function(e, ctx) {
 
             if (!this.mouseButtonIsDown) {
 
-                this.mouseIsOverMiddleHandler   = this.isInsideCircle(ctx, this.mouse_X, this.mouse_Y, this.control1X, this.control1Y, this.handleSelectionRadius);
-                this.mouseIsOverFirstLetter     = this.isInsideLetter(ctx, this.mouse_X, this.mouse_Y, 0);
-                this.mouseIsOverLastLetter      = this.isInsideLetter(ctx, this.mouse_X, this.mouse_Y, this.text.length - 1);
+                this.mouseIsOverMiddleHandler   = ctx.isPointInPath(this.bezierCurveControlPointPath, this.mouse_X, this.mouse_Y);
+                this.mouseIsOverFirstLetter     = ctx.isPointInPath(this.letterBoxPaths[0], this.mouse_X, this.mouse_Y);
+                this.mouseIsOverLastLetter      = ctx.isPointInPath(this.letterBoxPaths[this.text.length - 1], this.mouse_X, this.mouse_Y);
 
                 this.mouseIsOverAnyOtherLetter  = false;
                 for (let li = 1; li < this.text.length - 2; li++) {
-                    if (this.isInsideLetter(ctx, this.mouse_X, this.mouse_Y, li)) {
+                    if (ctx.isPointInPath(this.letterBoxPaths[li], this.mouse_X, this.mouse_Y)) {
                         this.mouseIsOverAnyOtherLetter = true;
                         break;
                     }
@@ -300,10 +406,10 @@ function createCurvedWord(text, points) {
                         this.control1Y -= yDiff;
 
                         // checking movement on the X scale so it's between word start and end points!
-                        if (this.control1X > this.endX) {
-                            this.control1X = this.endX;
-                        } else if (this.control1X < this.startX) {
-                            this.control1X = this.startX;
+                        if (this.control1X > this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width / 2) {
+                            this.control1X = this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width / 2;
+                        } else if (this.control1X < this.startX + this.lettersCoordinates[0].width / 2) {
+                            this.control1X = this.startX + this.lettersCoordinates[0].width / 2 ;
                         }
 
                         const newVirtualPointsCoordinates   = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
@@ -362,112 +468,6 @@ function createCurvedWord(text, points) {
 
         mouseButtonUp: function(e) {
             this.mouseButtonIsDown = false;
-        },
-
-        // -------------------------------------------------------------------------------------------------------------
-        // intersection functions
-        // -------------------------------------------------------------------------------------------------------------
-
-
-        isInsideCircle: function (ctx, mouse_x, mouse_y, point_x, point_y, radius) {
-
-            ctx.save();
-            const circle = new Path2D();
-            circle.arc(point_x, point_y, radius, 0, 2 * Math.PI)
-
-            ctx.strokeStyle = 'transparent';
-            ctx.stroke(circle);
-            ctx.restore();
-
-            return ctx.isPointInPath(circle, mouse_x, mouse_y);
-
-        },
-
-        isInsideLetter: function (ctx, mouse_x, mouse_y, letterIndex) {
-
-            ctx.save();
-            ctx.beginPath();
-
-            let letterCoordinates = this.lettersCoordinates[letterIndex];
-            let letterHeight = letterCoordinates.height;
-            let letterWidth = letterCoordinates.width;
-
-            ctx.translate(
-                letterCoordinates.start.pointOnTheBezierCurve.x,
-                letterCoordinates.start.pointOnTheBezierCurve.y
-            );
-            ctx.rotate(letterCoordinates.rad);                                                  // The rotation center point is always the canvas origin. To change the center point, you will need to move the canvas by using the translate() method.
-
-            ctx.closePath();
-            ctx.strokeStyle = "transparent"
-            ctx.rect(0, 0, letterWidth, -letterHeight);
-            ctx.stroke();
-
-            ctx.restore();
-
-            return ctx.isPointInPath(mouse_x, mouse_y);
-
-        },
-
-        // -------------------------------------------------------------------------------------------------------------
-        // debug functions
-        // -------------------------------------------------------------------------------------------------------------
-
-        drawBezierCurveUsingAPI: function(ctx) {
-
-            ctx.save();
-            ctx.beginPath();
-
-            ctx.moveTo(this.startX, this.startY)
-            ctx.bezierCurveTo(this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-
-            ctx.strokeStyle = "purple";
-            ctx.stroke();
-            ctx.restore();
-
-        },
-
-        drawDebugInfo: function (ctx) {
-
-            this.drawRoundHandle(ctx, this.control1X, this.control1Y, this.handleSelectionRadius);
-            // this.drawSquareHandle(ctx, this.lettersCoordinates, 0);
-            // this.drawSquareHandle(ctx, this.lettersCoordinates, this.text.length - 1);
-
-        },
-
-        drawRoundHandle: function (ctx, pointX, pointY, radius) {
-
-            ctx.save();
-            ctx.beginPath();
-
-            ctx.arc(pointX, pointY, radius, 0, 180);
-            ctx.strokeStyle = "red"
-            ctx.stroke();
-
-            ctx.restore();
-
-        },
-
-        drawSquareHandle: function (ctx, lettersCoordinates, letterIndex) {
-
-            ctx.save();
-            ctx.beginPath();
-
-            let letterCoordinates   = lettersCoordinates[letterIndex];
-            let letterHeight        = letterCoordinates.height;
-            let letterWidth         = letterCoordinates.width;
-
-            ctx.translate(
-                letterCoordinates.start.pointOnTheBezierCurve.x,
-                letterCoordinates.start.pointOnTheBezierCurve.y
-            );
-            ctx.rotate(letterCoordinates.rad);                                                  // The rotation center point is always the canvas origin. To change the center point, you will need to move the canvas by using the translate() method.
-
-            ctx.strokeStyle = "red"
-            ctx.strokeRect(0, 0, letterWidth, -letterHeight);
-
-            ctx.restore();
-
         },
 
         // -------------------------------------------------------------------------------------------------------------
@@ -561,6 +561,7 @@ function startIt()
 
     ctx.fillStyle           = "black";
     ctx.font                = "200px language_garden_regular";
+    // ctx.font                = "40px language_garden_regular";
 
     curveCoordinates        = document.getElementById('coordinates');
     curveText               = document.getElementById('text');
