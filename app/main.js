@@ -496,11 +496,17 @@ function createCurvedWord(text, points) {
             let newControl1X = this.control1X - xDiff;
             let newControl1Y = this.control1Y - yDiff;
 
-            this.endX = newEndX;
-            this.endY = newEndY;
+            const newLettersPadding = this.calculatePaddingBetweenLetters(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, newEndX, newEndY), this.text.length - 1);
+            if (newLettersPadding >= 0 && newControl1X >= this.startX + this.lettersCoordinates[0].width / 2) {
 
-            this.control1X = newControl1X;
-            this.control1Y = newControl1Y;
+                this.endX = newEndX;
+                this.endY = newEndY;
+
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
+
+            }
+
 
             this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
             this.control2Y = this.control1Y;        // second control point to be same as first control point
