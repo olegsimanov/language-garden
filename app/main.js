@@ -53,7 +53,7 @@ function createCurvedWord(text, points) {
 
             const virtualPointsCoordinates      = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
             this.letterPaddingInPx              = this.calculatePaddingBetweenLetters(virtualPointsCoordinates, this.text.length - 1);
-            this.lettersCoordinates             = this.calculateLettersCoordinates(ctx, virtualPointsCoordinates, this.letterPaddingInPx);
+            this.lettersCoordinates             = this.calculateLettersCoordinates(ctx, virtualPointsCoordinates, this.letterPaddingInPx);                  // ctx here is used to get letter height and width
             this.letterBoxPaths                 = this.calculateLetterBoxPaths(this.lettersCoordinates);
             this.bezierCurveControlPointPath    = this.calculateBezierCurveControlPointPath(this.control1X, this.control1Y, this.handleSelectionRadius);
 
@@ -224,7 +224,7 @@ function createCurvedWord(text, points) {
             const letterCoordinates = lettersCoordinates[letterIndex];
 
             const alpha = - letterCoordinates.middle.rotation_hypotenuse_accHypotenuse.rad;
-            const beta  = (90 * Math.PI / 180) - alpha ;
+            const beta  = this.degreeToRadian(90) - alpha ;
             const c     = letterCoordinates.width / 2;
             const cc    = letterCoordinates.height / 2;
             const a     = c * Math.sin(alpha);
@@ -377,7 +377,7 @@ function createCurvedWord(text, points) {
             this.mouseIsOverLastLetter      = ctx.isPointInPath(this.letterBoxPaths[this.text.length - 1], mouse_X, mouse_Y);
 
             this.mouseIsOverAnyOtherLetter  = false;
-            for (let li = 1; li < this.text.length - 2; li++) {
+            for (let li = 1; li < this.text.length - 1; li++) {
                 if (ctx.isPointInPath(this.letterBoxPaths[li], mouse_X, mouse_Y)) {
                     this.mouseIsOverAnyOtherLetter = true;
                     break;
@@ -393,12 +393,13 @@ function createCurvedWord(text, points) {
             if (this.mouseIsOverFirstLetter) {
 
                 this.moveFirstPoint(xDiff, yDiff);
-                // this.rotateWordByFirstPoint(xDiff, yDiff);
+                // this.rotateAndStretchWordByFirstPoint(xDiff, yDiff);
 
             } else if (this.mouseIsOverLastLetter) {
 
-                this.moveLastPoint(xDiff, yDiff);
-                // this.rotateWordByLastPoint(xDiff, yDiff);
+                // this.moveLastPoint(xDiff, yDiff);
+                // this.rotateAndStretchWordByLastPoint(xDiff, yDiff);
+                this.rotateWordWithInverseDimitryBendByLastPoint(xDiff, yDiff);
 
             } else if (this.mouseIsOverMiddleHandler) {
 
@@ -428,8 +429,6 @@ function createCurvedWord(text, points) {
                 this.startX = newStartX;
                 this.startY = newStartY;
             }
-
-
 
         },
 
@@ -489,10 +488,51 @@ function createCurvedWord(text, points) {
 
         },
 
-        rotateWordByFirstPoint: function(xDiff, yDiff) {
+        rotateWordWithInverseDimitryBendByLastPoint: function(xDiff, yDiff) {
+
+            let newEndX = this.endX - xDiff;
+            let newEndY = this.endY - yDiff;
+
+            let newControl1X = this.control1X - xDiff;
+            let newControl1Y = this.control1Y - yDiff;
+
+            this.endX = newEndX;
+            this.endY = newEndY;
+
+            this.control1X = newControl1X;
+            this.control1Y = newControl1Y;
+
+            this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
+            this.control2Y = this.control1Y;        // second control point to be same as first control point
 
 
+        },
 
+        rotateAndStretchWordByLastPoint: function(xDiff, yDiff) {
+
+
+            const a_big     = Math.abs(this.startY - this.endY) - yDiff;
+            const b_big     = Math.abs(this.startX - this.endX) + xDiff;
+            const alpha_big = Math.asin();
+
+            const alpha_small   = Math.asin();
+
+            const alpha = alpha_big - alpha_small;
+
+            console.log(this.radianToDegree(alpha));
+
+        },
+
+        // -------------------------------------------------------------------------------------------------------------
+        // utility functions
+        // -------------------------------------------------------------------------------------------------------------
+
+        radianToDegree: function (radian) {
+            return radian * 180 / Math.PI;
+        },
+
+        degreeToRadian: function (degree) {
+            return degree * Math.PI / 180;
         },
 
         // -------------------------------------------------------------------------------------------------------------
@@ -592,7 +632,6 @@ function mouseMove(e) {
 
 }
 
-
 function mouseButtonDown(e) {
     mouseButtonIsDown = true;
 }
@@ -637,8 +676,8 @@ function startIt()
     // const coordinates       = "0.0, 100, 100, 100, 100, 100, 300, 100";
     const coordinates       = "100,500,340,500,340,500,800,500";
     // const text              = "abcdefghijklmnopqrstuvwxyz";
-    // const text              = "abcdef";
-    const text              = "monkey";
+    const text              = "abcdef";
+    // const text              = "monkey";
     // const text              = "my";
 
     curvedWord = createCurvedWord(text, coordinates.split(','));
