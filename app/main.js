@@ -662,7 +662,7 @@ function startIt()
     }
 
     const canvasDiv         = document.getElementById('canvasDiv');
-    canvasDiv.innerHTML     = '<canvas id="layer0" width="1200" height="800">Your browser does not support the canvas element.</canvas>'; // for IE
+    canvasDiv.innerHTML     = '<canvas id="layer0" width="1000" height="800">Your browser does not support the canvas element.</canvas>'; // for IE
 
     canvas                  = document.getElementById('layer0');
 
