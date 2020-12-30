@@ -392,14 +392,15 @@ function createCurvedWord(text, points) {
 
             if (this.mouseIsOverFirstLetter) {
 
-                this.moveFirstPoint(xDiff, yDiff);
+                // this.moveFirstPoint(xDiff, yDiff);
+                this.rotateWordWithInverseDimitryBendByFirstPoint(xDiff, yDiff);
                 // this.rotateAndStretchWordByFirstPoint(xDiff, yDiff);
 
             } else if (this.mouseIsOverLastLetter) {
 
                 // this.moveLastPoint(xDiff, yDiff);
-                // this.rotateAndStretchWordByLastPoint(xDiff, yDiff);
                 this.rotateWordWithInverseDimitryBendByLastPoint(xDiff, yDiff);
+                // this.rotateAndStretchWordByLastPoint(xDiff, yDiff);
 
             } else if (this.mouseIsOverMiddleHandler) {
 
@@ -514,18 +515,47 @@ function createCurvedWord(text, points) {
 
         },
 
+        rotateWordWithInverseDimitryBendByFirstPoint: function(xDiff, yDiff) {
+
+            let newStartX = this.startX - xDiff;
+            let newStartY = this.startY - yDiff;
+
+            let newControl1X = this.control1X - xDiff;
+            let newControl1Y = this.control1Y - yDiff;
+
+            const newLettersPadding = this.calculatePaddingBetweenLetters(this.calculateVirtualPointsCoordinates(newStartX, newStartY, newControl1X, newControl1Y, newControl1X, newControl1Y, this.endX, this.endY), this.text.length - 1);
+            if (newLettersPadding >= 0 && newControl1X <= this.endX - this.lettersCoordinates[0].width / 2) {
+
+                this.startX = newStartX;
+                this.startY = newStartY;
+
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
+
+            }
+
+
+            this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
+            this.control2Y = this.control1Y;        // second control point to be same as first control point
+
+
+        },
+
         rotateAndStretchWordByLastPoint: function(xDiff, yDiff) {
 
 
-            const a_big     = Math.abs(this.startY - this.endY) - yDiff;
-            const b_big     = Math.abs(this.startX - this.endX) + xDiff;
-            const alpha_big = Math.asin();
+            const r = Math.sqrt(Math.abs(this.startY - this.endY) * Math.abs(this.startY - this.endY) + Math.abs(this.startX - this.endX) * Math.abs(this.startX - this.endX));
+            const a = Math.abs(this.startY - this.endY) + yDiff;
+            const b = Math.abs(this.startX - this.endX) + xDiff;
+            const alpha = Math.atan(a / b);
 
-            const alpha_small   = Math.asin();
+            const alpha_small = (this.startY - this.endY) / r;
+            const alpha_big = alpha + alpha_small;
+            const a_big = r * Math.sin(alpha_big);
+            const b_big = r * Math.cos(alpha_big);
 
-            const alpha = alpha_big - alpha_small;
-
-            console.log(this.radianToDegree(alpha));
+            this.endX = this.startX + b_big;
+            this.endY = this.startY - a_big;
 
         },
 
