@@ -365,156 +365,134 @@ function createCurvedWord(text, points) {
         // mouse listener methods
         // -------------------------------------------------------------------------------------------------------------
 
-        mouse_X:                        -1,
-        mouse_Y:                        -1,
         mouseIsOverMiddleHandler:       false,
         mouseIsOverFirstLetter:         false,
         mouseIsOverLastLetter:          false,
-        mouseButtonIsDown:              false,
+        mouseIsOverAnyOtherLetter:      false,
 
-        mouseMove: function(e, ctx) {
+        isMouseCursorOverMe: function(mouse_X, mouse_Y) {
 
-            if (!this.mouseButtonIsDown) {
+            this.mouseIsOverMiddleHandler   = ctx.isPointInPath(this.bezierCurveControlPointPath, mouse_X, mouse_Y);
+            this.mouseIsOverFirstLetter     = ctx.isPointInPath(this.letterBoxPaths[0], mouse_X, mouse_Y);
+            this.mouseIsOverLastLetter      = ctx.isPointInPath(this.letterBoxPaths[this.text.length - 1], mouse_X, mouse_Y);
 
-                this.mouseIsOverMiddleHandler   = ctx.isPointInPath(this.bezierCurveControlPointPath, this.mouse_X, this.mouse_Y);
-                this.mouseIsOverFirstLetter     = ctx.isPointInPath(this.letterBoxPaths[0], this.mouse_X, this.mouse_Y);
-                this.mouseIsOverLastLetter      = ctx.isPointInPath(this.letterBoxPaths[this.text.length - 1], this.mouse_X, this.mouse_Y);
-
-                this.mouseIsOverAnyOtherLetter  = false;
-                for (let li = 1; li < this.text.length - 2; li++) {
-                    if (ctx.isPointInPath(this.letterBoxPaths[li], this.mouse_X, this.mouse_Y)) {
-                        this.mouseIsOverAnyOtherLetter = true;
-                        break;
-                    }
+            this.mouseIsOverAnyOtherLetter  = false;
+            for (let li = 1; li < this.text.length - 2; li++) {
+                if (ctx.isPointInPath(this.letterBoxPaths[li], mouse_X, mouse_Y)) {
+                    this.mouseIsOverAnyOtherLetter = true;
+                    break;
                 }
-
-                // console.log("mouseIsOverMiddleHandler: " + this.mouseIsOverMiddleHandler + ", mouseIsOverFirstLetter: " + this.mouseIsOverFirstLetter + ", mouseIsOverLastLetter: " + this.mouseIsOverLastLetter + ", mouseIsOverAnyOtherLetter: " + this.mouseIsOverAnyOtherLetter);
-
-            } else if (this.mouseButtonIsDown) {
-
-
-                const xDiff = parseFloat(this.mouse_X - e.offsetX);
-                const yDiff = parseFloat(this.mouse_Y - e.offsetY);
-
-                if (this.mouseIsOverFirstLetter) {
-
-                    const oldStartX = this.startX;
-                    const oldStartY = this.startY;
-                    this.startX -= xDiff;
-                    this.startY -= yDiff;
-
-                    // checking movement on the X scale so it's between word start and end points!
-                    if (this.startX > this.control1X) {
-                        this.startX = this.control1X;
-                    }
-
-                    const newVirtualPointsCoordinates   = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-                    const newCurveLength                = newVirtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
-                    const newLettersPadding             = this.calculatePaddingBetweenLetters(newVirtualPointsCoordinates, this.text.length - 1);
-                    if (newLettersPadding < 0 && xDiff < 0) {
-                        // console.log("adjusting startX from: " + this.startX + " to " + oldStartX);
-                        this.startX = oldStartX;        // rolling back previous value
-                        this.startY = oldStartY;        // rolling back previous value
-                    }
-
-                    console.log("n.padding: " + newLettersPadding + ", c. padding: " + this.letterPaddingInPx + ", n. curve distance: " + newCurveLength + ", c. curve distance: " + this.curveLength + ", textLength: " + this.getWordLengthInPx(this.text) + " textLengthWithPaddings: " + (this.getWordLengthInPx(this.text) + this.letterPaddingInPx * (this.text.length - 1)))
-
-
-                } else if (this.mouseIsOverLastLetter) {
-
-                    const oldEndX = this.endX;
-                    const oldEndY = this.endY;
-                    this.endX -= xDiff;
-                    this.endY -= yDiff;
-
-                    // checking movement on the X scale so it's between word start and end points!
-                    if (this.endX < this.control1X) {
-                        this.endX = this.control1X;
-                    }
-
-                    const newVirtualPointsCoordinates   = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-                    const newCurveLength                = newVirtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
-                    const newLettersPadding             = this.calculatePaddingBetweenLetters(newVirtualPointsCoordinates, this.text.length - 1);
-                    if (newLettersPadding < 0 && xDiff >= 0) {
-                        // console.log("adjusting endX from: " + this.endX + " to " + oldEndX);
-                        this.endX = oldEndX;            // rolling back previous value
-                        this.endY = oldEndY;            // rolling back previous value
-                    }
-
-                    console.log("n.padding: " + newLettersPadding + ", c. padding: " + this.letterPaddingInPx + ", n. curve distance: " + newCurveLength + ", c. curve distance: " + this.curveLength + ", textLength: " + this.getWordLengthInPx(this.text) + " textLengthWithPaddings: " + (this.getWordLengthInPx(this.text) + this.letterPaddingInPx * (this.text.length - 1)))
-
-
-
-                } else if (this.mouseIsOverMiddleHandler) {
-
-                    if (this.mouse_X !== -1 && this.mouse_Y !== -1) {
-
-                        const oldControl1X = this.control1X;
-                        const oldControl1Y = this.control1Y;
-                        this.control1X -= xDiff;
-                        this.control1Y -= yDiff;
-
-                        // checking movement on the X scale so it's between word start and end points!
-                        if (this.control1X > this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width / 2) {
-                            this.control1X = this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width / 2;
-                        } else if (this.control1X < this.startX + this.lettersCoordinates[0].width / 2) {
-                            this.control1X = this.startX + this.lettersCoordinates[0].width / 2 ;
-                        }
-
-                        const newVirtualPointsCoordinates   = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
-                        const newCurveLength                = newVirtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
-                        const newLettersPadding             = this.calculatePaddingBetweenLetters(newVirtualPointsCoordinates, this.text.length - 1);
-                        if (newLettersPadding < 0) {
-                            console.log("adjusting control1X from: " + this.control1X + " to " + oldControl1X);
-                            console.log("adjusting control1Y from: " + this.control1Y + " to " + oldControl1Y);
-                            this.control1X = oldControl1X;        // rolling back previous value
-                            this.control1Y = oldControl1Y;        // rolling back previous value
-                        }
-
-                        console.log("n.padding: " + newLettersPadding + ", c. padding: " + this.letterPaddingInPx + ", n. curve distance: " + newCurveLength + ", c. curve distance: " + this.curveLength + ", textLength: " + this.getWordLengthInPx(this.text) + " textLengthWithPaddings: " + (this.getWordLengthInPx(this.text) + this.letterPaddingInPx * (this.text.length - 1)))
-
-                        // since we are using simple bezier curve we have to set second control point to be same as first control point
-                        this.control2X = this.control1X;
-                        this.control2Y = this.control1Y;
-                    }
-
-                } else {        // move the whole word
-
-                    this.startX     -= xDiff;
-                    this.startY     -= yDiff;
-
-                    this.endX       -= xDiff;
-                    this.endY       -= yDiff;
-
-                    this.control1X  -= xDiff;
-                    this.control1Y  -= yDiff;
-
-                    // since we are using simple bezier curve we have to set second control point to be same as first control point
-                    this.control2X = this.control1X;
-                    this.control2Y = this.control1Y;
-
-                }
-
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                curveCoordinates.value = [this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY].join(',');
-                curvedWord.draw(ctx);
             }
 
-            this.mouse_X = e.offsetX;
-            this.mouse_Y = e.offsetY;
+            return this.mouseIsOverMiddleHandler || this.mouseIsOverFirstLetter || this.mouseIsOverLastLetter || this.mouseIsOverAnyOtherLetter;
 
         },
 
-        mouseButtonDown: function(e) {
+        reactToMouseCoordinatesChanges: function(xDiff, yDiff) {
 
-            if (!(this.mouseIsOverFirstLetter || this.mouseIsOverMiddleHandler || this.mouseIsOverLastLetter || this.mouseIsOverAnyOtherLetter)) {
-                return;
+            if (this.mouseIsOverFirstLetter) {
+
+                this.moveFirstPoint(xDiff, yDiff);
+                // this.rotateWordByFirstPoint(xDiff, yDiff);
+
+            } else if (this.mouseIsOverLastLetter) {
+
+                this.moveLastPoint(xDiff, yDiff);
+                // this.rotateWordByLastPoint(xDiff, yDiff);
+
+            } else if (this.mouseIsOverMiddleHandler) {
+
+                this.moveMiddlePoint(xDiff, yDiff);
+
+            } else if (this.mouseIsOverAnyOtherLetter) {
+
+                this.moveWholeWord(xDiff, yDiff);
+
             }
-            this.mouseButtonIsDown = true;
+
+
         },
 
-        mouseButtonUp: function(e) {
-            this.mouseButtonIsDown = false;
+        moveFirstPoint: function (xDiff, yDiff) {
+
+            let newStartX = this.startX - xDiff;
+            let newStartY = this.startY - yDiff;
+
+            // checking movement on the X scale so it's between word start and end points!
+            if (newStartX > this.control1X) {
+                newStartX = this.control1X;
+            }
+
+            const newLettersPadding = this.calculatePaddingBetweenLetters(this.calculateVirtualPointsCoordinates(newStartX, newStartY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY), this.text.length - 1);
+            if (newLettersPadding >= 0) {
+                this.startX = newStartX;
+                this.startY = newStartY;
+            }
+
+
+
+        },
+
+        moveLastPoint: function (xDiff, yDiff) {
+
+            let newEndX = this.endX - xDiff;
+            let newEndY = this.endY - yDiff;
+
+            // checking movement on the X scale so it's between word start and end points!
+            if (newEndX < this.control1X) {
+                newEndX = this.control1X;
+            }
+
+            const newLettersPadding = this.calculatePaddingBetweenLetters(this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, newEndX, newEndY), this.text.length - 1);
+            if (newLettersPadding >= 0) {
+                this.endX = newEndX;
+                this.endY = newEndY;
+            }
+
+        },
+
+        moveMiddlePoint: function (xDiff, yDiff) {
+
+            let newControl1X = this.control1X - xDiff;
+            let newControl1Y = this.control1Y - yDiff;
+
+            // checking movement on the X scale so it's between word start and end points!
+            if (newControl1X > this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width / 2) {
+                newControl1X = this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width / 2;
+            } else if (newControl1X < this.startX + this.lettersCoordinates[0].width / 2) {
+                newControl1X = this.startX + this.lettersCoordinates[0].width / 2;
+            }
+
+            const newLettersPadding = this.calculatePaddingBetweenLetters(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, this.endX, this.endY), this.text.length - 1);
+            if (newLettersPadding >= 0) {
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
+            }
+
+            this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
+            this.control2Y = this.control1Y;        // second control point to be same as first control point
+        },
+
+        moveWholeWord: function (xDiff, yDiff) {
+
+            this.startX     -= xDiff;
+            this.startY     -= yDiff;
+
+            this.endX       -= xDiff;
+            this.endY       -= yDiff;
+
+            this.control1X  -= xDiff;
+            this.control1Y  -= yDiff;
+
+            this.control2X  = this.control1X;       // since we are using simple bezier curve we have to set
+            this.control2Y  = this.control1Y;       // second control point to be same as first control point
+
+        },
+
+        rotateWordByFirstPoint: function(xDiff, yDiff) {
+
+
+
         },
 
         // -------------------------------------------------------------------------------------------------------------
@@ -574,14 +552,59 @@ let first = true;       // make sure we initialize everything only once
 let canvas;             // width and height
 let ctx;                // we use this to draw
 
-let curveCoordinates;
-let curveText;
 let curvedWord;
 
 
 // ---------------------------------------------------------------------------------------------------------------------
 // mouse handling logic
 // ---------------------------------------------------------------------------------------------------------------------
+
+let mouseButtonIsDown       = false;
+let mouse_X                 = -1;
+let mouse_Y                 = -1;
+let objectUnderMouseCursor  = null;
+
+function mouseMove(e) {
+
+    if (!mouseButtonIsDown) {
+
+        let isMouseCursorOverMe = curvedWord.isMouseCursorOverMe(e.offsetX, e.offsetY);
+        if (isMouseCursorOverMe) {
+            objectUnderMouseCursor = curvedWord;
+        }
+
+    } else if (mouseButtonIsDown) {
+
+        const xDiff = mouse_X - e.offsetX;
+        const yDiff = mouse_Y - e.offsetY;
+
+        if (objectUnderMouseCursor !== null) {
+            objectUnderMouseCursor.reactToMouseCoordinatesChanges(xDiff, yDiff);
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        curvedWord.draw(ctx);
+
+    }
+
+    mouse_X = e.offsetX;
+    mouse_Y = e.offsetY;
+
+}
+
+
+function mouseButtonDown(e) {
+    mouseButtonIsDown = true;
+}
+
+function mouseButtonUp(e) {
+    mouseButtonIsDown = false;
+}
+
+function mouseClick(e) {
+
+}
+
 
 // -----------------------------------------------------------------------------------------------------------------------
 
@@ -594,14 +617,14 @@ function startIt()
     }
 
     const canvasDiv         = document.getElementById('canvasDiv');
-    canvasDiv.innerHTML     = '<canvas id="layer0" width="1000" height="800">Your browser does not support the canvas element.</canvas>'; // for IE
+    canvasDiv.innerHTML     = '<canvas id="layer0" width="1200" height="800">Your browser does not support the canvas element.</canvas>'; // for IE
 
     canvas                  = document.getElementById('layer0');
 
-    canvas.addEventListener('click',     function (e) {})
-    canvas.addEventListener('mousedown', function (e) {curvedWord.mouseButtonDown(e);})
-    canvas.addEventListener('mouseup',   function (e) {curvedWord.mouseButtonUp(e);})
-    canvas.addEventListener('mousemove', function (e) {curvedWord.mouseMove(e, ctx);})
+    canvas.addEventListener('click',     mouseClick)
+    canvas.addEventListener('mousedown', mouseButtonDown )
+    canvas.addEventListener('mouseup',   mouseButtonUp )
+    canvas.addEventListener('mousemove', mouseMove )
 
 
     ctx                     = canvas.getContext('2d');
@@ -610,11 +633,15 @@ function startIt()
     ctx.font                = "200px language_garden_regular";
     // ctx.font                = "40px language_garden_regular";
 
-    curveCoordinates        = document.getElementById('coordinates');
-    curveText               = document.getElementById('text');
+    // const coordinates       = "0,56,240,56,240,56,570,56";
+    // const coordinates       = "0.0, 100, 100, 100, 100, 100, 300, 100";
+    const coordinates       = "100,500,340,500,340,500,800,500";
+    // const text              = "abcdefghijklmnopqrstuvwxyz";
+    // const text              = "abcdef";
+    const text              = "monkey";
+    // const text              = "my";
 
-    curvedWord = createCurvedWord(curveText.value, curveCoordinates.value.split(','));
-    // curvedWord.changeCoordinates(curveCoordinates.value.split(','));
+    curvedWord = createCurvedWord(text, coordinates.split(','));
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     curvedWord.draw(ctx);
 
