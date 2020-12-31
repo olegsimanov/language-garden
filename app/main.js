@@ -509,7 +509,7 @@ function createCurvedWord(text, points) {
             let newControl1Y    = this.control1Y - yDiff;
 
             // const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, newEndX, newEndY));
-            const lineLength = this.getLineLengthBetweenStartAndEndInPx(this.startX, this.startY, newEndX, newEndY);
+            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(this.startX, this.startY, newEndX, newEndY);
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding >= 0 && newControl1X >= this.startX + this.lettersCoordinates[0].width / 2) {
 
@@ -519,7 +519,21 @@ function createCurvedWord(text, points) {
                 this.control1X = newControl1X;
                 this.control1Y = newControl1Y;
 
+            } else if (newLettersPadding >= 0) {
+
+                this.endY       = newEndY;
+                this.control1Y  = newControl1Y;
+
+            } else {
+
+                this.endY       = newEndY;
+                this.control1Y  = newControl1Y;
+                this.endX       = this.endX + Math.abs(xDiff * 1.5);
+                this.control1X  = this.control1X + Math.abs(xDiff * 1.5);
+
             }
+
+            console.log(newLettersPadding);
 
 
             this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
@@ -537,7 +551,7 @@ function createCurvedWord(text, points) {
             let newControl1Y    = this.control1Y - yDiff;
 
             // const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(newStartX, newStartY, newControl1X, newControl1Y, newControl1X, newControl1Y, this.endX, this.endY));
-            const lineLength = this.getLineLengthBetweenStartAndEndInPx(newStartX, newStartY, this.endX, this.endY);
+            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(newStartX, newStartY, this.endX, this.endY);
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding >= 0 && newControl1X <= this.endX - this.lettersCoordinates[0].width / 2) {
 
@@ -547,7 +561,21 @@ function createCurvedWord(text, points) {
                 this.control1X = newControl1X;
                 this.control1Y = newControl1Y;
 
+            } else if (newLettersPadding >= 0) {
+
+                this.startY     = newStartY;
+                this.control1Y  = newControl1Y;
+
+            } else {
+
+                this.startY     = newStartY;
+                this.control1Y  = newControl1Y;
+                this.startX     = this.startX - Math.abs(xDiff * 1.5);
+                this.control1X  = this.control1X - Math.abs(xDiff * 1.5);
+
             }
+
+            console.log(newLettersPadding);
 
 
             this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
@@ -734,11 +762,13 @@ function startIt()
     ctx.fillStyle           = "black";
     ctx.font                = "200px language_garden_regular";
     // ctx.font                = "40px language_garden_regular";
+    // ctx.font                = "80px language_garden_regular";
 
     // const coordinates       = "0,56,240,56,240,56,570,56";
     // const coordinates       = "0.0, 100, 100, 100, 100, 100, 300, 100";
     const coordinates       = "100,500,340,500,340,500,800,500";
     // const text              = "abcdefghijklmnopqrstuvwxyz";
+    // const text              = "abcdefghijkl";
     const text              = "abcdef";
     // const text              = "monkey";
     // const text              = "my";
