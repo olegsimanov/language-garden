@@ -310,7 +310,7 @@ function createCurvedWord(text, points) {
         drawSingleLetterAt: function (ctx, lettersCoordinates, letterIndex) {
 
             const letterCoordinates = lettersCoordinates[letterIndex];
-            const letter = this.text[letterIndex];
+            const letter            = this.text[letterIndex];
 
             ctx.save();
             ctx.beginPath();
@@ -393,7 +393,7 @@ function createCurvedWord(text, points) {
 
         },
 
-        getMouseRadsDiff: function (stableX, stableY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff) {
+        getMouseRadiansAndRadiusDiff: function (stableX, stableY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff) {
 
             const newMouseX         = prev_mouse_X - xDiff;
             const newMouseY         = prev_mouse_Y - yDiff;
@@ -401,7 +401,10 @@ function createCurvedWord(text, points) {
             const new_mouse_radius  = Math.sqrt(Math.abs(stableX - newMouseX)       * Math.abs(stableX - newMouseX)     + Math.abs(stableY - newMouseY)     * Math.abs(stableY - newMouseY))
             const prev_mouse_rads   = Math.asin((prev_mouse_Y - stableY) / prev_mouse_radius);
             const new_mouse_rads    = Math.asin((newMouseY - stableY) / new_mouse_radius);
-            return new_mouse_rads - prev_mouse_rads;
+            const radians_diff      = new_mouse_rads - prev_mouse_rads;
+            const radius_diff       = new_mouse_radius / prev_mouse_radius;
+
+            return [ radians_diff, radius_diff ] ;
 
         },
 
@@ -409,30 +412,30 @@ function createCurvedWord(text, points) {
 
             if (this.mouseIsOverFirstLetter) {
 
-                const mouse_rads_diff = this.getMouseRadsDiff(this.endX, this.endY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff);
+                const [ mouse_radians_diff, mouse_radius_diff ] = this.getMouseRadiansAndRadiusDiff(this.endX, this.endY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff);
 
                 // this.moveFirstPoint(xDiff, yDiff);
                 // this.rotateWordWithInverseDimitryBendByFirstPoint(xDiff, yDiff);
-                this.rotateAndStretchWordByFirstPoint(xDiff, yDiff, mouse_rads_diff);
+                return this.rotateAndStretchWordByFirstPoint(xDiff, yDiff, mouse_radians_diff, mouse_radius_diff);
 
             } else if (this.mouseIsOverLastLetter) {
 
-                const mouse_rads_diff = this.getMouseRadsDiff(this.startX, this.startY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff);
+                const [ mouse_radians_diff, mouse_radius_diff ] = this.getMouseRadiansAndRadiusDiff(this.startX, this.startY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff);
 
                 // if (this.radianToDegree(Math.abs(mouse_rads_diff)) < 1) {
                 //     this.moveLastPoint(xDiff, yDiff);
                 // } else {
                     // this.rotateWordWithInverseDimitryBendByLastPoint(xDiff, yDiff);
-                    this.rotateAndStretchWordByLastPoint(xDiff, yDiff, mouse_rads_diff);
+                    return this.rotateAndStretchWordByLastPoint(xDiff, yDiff, mouse_radians_diff, mouse_radius_diff);
                 // }
 
             } else if (this.mouseIsOverMiddleHandler) {
 
-                this.moveMiddlePoint(xDiff, yDiff);
+                return this.moveMiddlePoint(xDiff, yDiff);
 
             } else if (this.mouseIsOverAnyOtherLetter) {
 
-                this.moveWholeWord(xDiff, yDiff);
+                return this.moveWholeWord(xDiff, yDiff);
 
             }
 
@@ -498,6 +501,8 @@ function createCurvedWord(text, points) {
 
             this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
             this.control2Y = this.control1Y;        // second control point to be same as first control point
+
+            return CONTINUE_MOUSE_DRAGGING;
         },
 
         moveWholeWord: function (xDiff, yDiff) {
@@ -513,6 +518,8 @@ function createCurvedWord(text, points) {
 
             this.control2X  = this.control1X;       // since we are using simple bezier curve we have to set
             this.control2Y  = this.control1Y;       // second control point to be same as first control point
+
+            return CONTINUE_MOUSE_DRAGGING;
 
         },
 
@@ -600,7 +607,7 @@ function createCurvedWord(text, points) {
 
         },
 
-        rotateAndStretchWordByLastPoint: function(xDiff, yDiff, mouse_rads_diff) {
+        rotateAndStretchWordByLastPoint: function(xDiff, yDiff, mouse_radians_diff, mouse_radius_diff) {
 
             if (xDiff === 0 && yDiff === 0) {
                 return; // no rotation
@@ -611,23 +618,44 @@ function createCurvedWord(text, points) {
             const middle_radius     = Math.sqrt(Math.abs(this.startX - this.control1X)  * Math.abs(this.startX - this.control1X)    + Math.abs(this.startY - this.control1Y)    * Math.abs(this.startY - this.control1Y));
 
             const e_rads            = Math.asin((this.endY - this.startY) / end_radius);
-            const e_newRads         = e_rads + mouse_rads_diff;
+            const e_newRads         = e_rads + mouse_radians_diff;
 
             const m_rads            = Math.asin((this.control1Y - this.startY) / middle_radius);
-            const m_newRads         = m_rads + mouse_rads_diff;
+            const m_newRads         = m_rads + mouse_radians_diff;
 
-            this.endX               = this.startX + end_radius * Math.cos(e_newRads);
-            this.endY               = this.startY + end_radius * Math.sin(e_newRads);
+            const newEndX           = this.startX + end_radius * mouse_radius_diff * Math.cos(e_newRads);
+            const newEndY           = this.startY + end_radius * mouse_radius_diff * Math.sin(e_newRads);
 
-            this.control1X          = this.startX + middle_radius * Math.cos(m_newRads);
-            this.control1Y          = this.startY + middle_radius * Math.sin(m_newRads);
+            const newControl1X      = this.startX + middle_radius * Math.cos(m_newRads);
+            const newControl1Y      = this.startY + middle_radius * Math.sin(m_newRads);
 
-            this.control2X          = this.control1X;
-            this.control2Y          = this.control1Y;
+            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(this.startX, this.startY, newEndX, newEndY);
+            const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
+            if (newLettersPadding >= 0
+                && newControl1X >= this.startX + this.lettersCoordinates[0].width / 2
+            ) {
+
+                this.endX = newEndX;
+                this.endY = newEndY;
+
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
+
+                this.control2X = this.control1X;
+                this.control2Y = this.control1Y;
+
+            }
+
+            // if (newControl1X >= this.startX + this.lettersCoordinates[0].width / 2) {
+                return CONTINUE_MOUSE_DRAGGING;
+            // } else {
+            //     return STOP_MOUSE_DRAGGING;
+            // }
+
 
         },
 
-        rotateAndStretchWordByFirstPoint: function(xDiff, yDiff, mouse_rads_diff) {
+        rotateAndStretchWordByFirstPoint: function(xDiff, yDiff, mouse_radians_diff, mouse_radius_diff) {
 
             if (xDiff === 0 && yDiff === 0) {
                 return; // no rotation
@@ -638,19 +666,40 @@ function createCurvedWord(text, points) {
             const middle_radius     = Math.sqrt(Math.abs(this.endX - this.control1X)    * Math.abs(this.endX - this.control1X)      + Math.abs(this.endY - this.control1Y)      * Math.abs(this.endY - this.control1Y));
 
             const s_rads            = Math.asin((this.startY - this.endY) / start_radius);
-            const s_newRads         = s_rads + mouse_rads_diff;
+            const s_newRads         = s_rads + mouse_radians_diff;
 
             const m_rads            = Math.asin((this.control1Y - this.endY) / middle_radius);
-            const m_newRads         = m_rads + mouse_rads_diff;
+            const m_newRads         = m_rads + mouse_radians_diff;
 
-            this.startX             = this.endX - start_radius * Math.cos(s_newRads);
-            this.startY             = this.endY + start_radius * Math.sin(s_newRads);
+            const newStartX         = this.endX - start_radius * mouse_radius_diff * Math.cos(s_newRads);
+            const newStartY         = this.endY + start_radius * mouse_radius_diff * Math.sin(s_newRads);
 
-            this.control1X          = this.endX - middle_radius * Math.cos(m_newRads);
-            this.control1Y          = this.endY + middle_radius * Math.sin(m_newRads);
+            const newControl1X      = this.endX - middle_radius * Math.cos(m_newRads);
+            const newControl1Y      = this.endY + middle_radius * Math.sin(m_newRads);
 
-            this.control2X          = this.control1X;
-            this.control2Y          = this.control1Y;
+
+            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(newStartX, newStartY, this.endX, this.endY);
+            const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
+            if (newLettersPadding >= 0
+                && newControl1X <= this.endX - this.lettersCoordinates[0].width / 2
+            ) {
+
+                this.startX = newStartX;
+                this.startY = newStartY;
+
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
+
+                this.control2X = this.control1X;
+                this.control2Y = this.control1Y;
+
+            }
+
+            // if (newControl1X <= this.endX - this.lettersCoordinates[0].width / 2) {
+                return CONTINUE_MOUSE_DRAGGING;
+            // } else {
+            //     return STOP_MOUSE_DRAGGING;
+            // }
 
         },
 
@@ -734,6 +783,8 @@ let mouseButtonIsDown       = false;
 let mouse_X                 = -1;
 let mouse_Y                 = -1;
 let objectUnderMouseCursor  = null;
+let CONTINUE_MOUSE_DRAGGING = 0;
+let STOP_MOUSE_DRAGGING     = 1;
 
 function mouseMove(e) {
 
@@ -750,7 +801,10 @@ function mouseMove(e) {
         const yDiff = mouse_Y - e.offsetY;
 
         if (objectUnderMouseCursor !== null) {
-            objectUnderMouseCursor.reactToMouseCoordinatesChanges(mouse_X, mouse_Y, xDiff, yDiff);
+            const whatToDoWithMouse = objectUnderMouseCursor.reactToMouseCoordinatesChanges(mouse_X, mouse_Y, xDiff, yDiff);
+            if (whatToDoWithMouse === STOP_MOUSE_DRAGGING) {
+                mouseButtonIsDown = false;
+            }
         }
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
