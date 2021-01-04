@@ -21,7 +21,6 @@ function createCurvedWord(text, points) {
         lettersCoordinates:             [],                     // letters coordinates and data on the bezier curve
         letterBoxPaths:                 [],                     // letter 2d shapes
         bezierCurveControlPointPath:    null,
-        handleSelectionRadius:          20,
 
 
         // -------------------------------------------------------------------------------------------------------------
@@ -54,7 +53,7 @@ function createCurvedWord(text, points) {
             const virtualPointsCoordinates      = this.calculateVirtualPointsCoordinates(this.startX, this.startY, this.control1X, this.control1Y, this.control2X, this.control2Y, this.endX, this.endY);
             this.lettersCoordinates             = this.calculateLettersCoordinates(ctx, virtualPointsCoordinates, this.calculatePaddingBetweenLetters(this.getCurveLengthInPx(virtualPointsCoordinates), this.text.length - 1));                  // ctx here is used to get letter height and width
             this.letterBoxPaths                 = this.calculateLetterBoxPaths(this.lettersCoordinates);
-            this.bezierCurveControlPointPath    = this.calculateBezierCurveControlPointPath(this.control1X, this.control1Y, this.handleSelectionRadius);
+            this.bezierCurveControlPointPath    = this.calculateBezierCurveControlPointPath(this.control1X, this.control1Y, ctx.measureText(this.text[0]).width / 1.5);
 
             // this.drawBezierCurveUsingAPI(ctx);                                   // for comparison purposes
             this.drawWord(ctx, this.lettersCoordinates, this.letterBoxPaths);
@@ -802,8 +801,9 @@ function startIt()
 
     ctx.fillStyle           = "black";
     ctx.font                = "200px language_garden_regular";
-    // ctx.font                = "40px language_garden_regular";
+    // ctx.font                = "20px language_garden_regular";
     // ctx.font                = "80px language_garden_regular";
+    // ctx.font                = "40px arial";
 
     // const coordinates       = "0,56,240,56,240,56,570,56";
     // const coordinates       = "0.0, 100, 100, 100, 100, 100, 300, 100";
