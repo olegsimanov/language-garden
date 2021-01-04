@@ -84,9 +84,7 @@ function createCurvedWord(text, points) {
 
             }
 
-            this.curveLength                    = this.accumulatedDistanceFromStart;   // saving current accumulated distance from start
             this.accumulatedDistanceFromStart   = 0;                                    // resetting accumulated distance from start otherwise it will grow infinitely
-
 
             return virtualPointsCoordinates;
 
@@ -396,19 +394,38 @@ function createCurvedWord(text, points) {
 
         },
 
-        reactToMouseCoordinatesChanges: function(xDiff, yDiff) {
+        getMouseRadsDiff: function (stableX, stableY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff) {
+
+            const newMouseX         = prev_mouse_X - xDiff;
+            const newMouseY         = prev_mouse_Y - yDiff;
+            const prev_mouse_radius = Math.sqrt(Math.abs(stableX - prev_mouse_X)    * Math.abs(stableX - prev_mouse_X)  + Math.abs(stableY - prev_mouse_Y)  * Math.abs(stableY - prev_mouse_Y))
+            const new_mouse_radius  = Math.sqrt(Math.abs(stableX - newMouseX)       * Math.abs(stableX - newMouseX)     + Math.abs(stableY - newMouseY)     * Math.abs(stableY - newMouseY))
+            const prev_mouse_rads   = Math.asin((prev_mouse_Y - stableY) / prev_mouse_radius);
+            const new_mouse_rads    = Math.asin((newMouseY - stableY) / new_mouse_radius);
+            return new_mouse_rads - prev_mouse_rads;
+
+        },
+
+        reactToMouseCoordinatesChanges: function(prev_mouse_X, prev_mouse_Y, xDiff, yDiff) {
 
             if (this.mouseIsOverFirstLetter) {
 
+                const mouse_rads_diff = this.getMouseRadsDiff(this.endX, this.endY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff);
+
                 // this.moveFirstPoint(xDiff, yDiff);
-                this.rotateWordWithInverseDimitryBendByFirstPoint(xDiff, yDiff);
-                // this.rotateAndStretchWordByFirstPoint(xDiff, yDiff);
+                // this.rotateWordWithInverseDimitryBendByFirstPoint(xDiff, yDiff);
+                this.rotateAndStretchWordByFirstPoint(xDiff, yDiff, mouse_rads_diff);
 
             } else if (this.mouseIsOverLastLetter) {
 
-                // this.moveLastPoint(xDiff, yDiff);
-                this.rotateWordWithInverseDimitryBendByLastPoint(xDiff, yDiff);
-                // this.rotateAndStretchWordByLastPoint(xDiff, yDiff);
+                const mouse_rads_diff = this.getMouseRadsDiff(this.startX, this.startY, prev_mouse_X, xDiff, prev_mouse_Y, yDiff);
+
+                // if (this.radianToDegree(Math.abs(mouse_rads_diff)) < 1) {
+                //     this.moveLastPoint(xDiff, yDiff);
+                // } else {
+                    // this.rotateWordWithInverseDimitryBendByLastPoint(xDiff, yDiff);
+                    this.rotateAndStretchWordByLastPoint(xDiff, yDiff, mouse_rads_diff);
+                // }
 
             } else if (this.mouseIsOverMiddleHandler) {
 
@@ -528,8 +545,8 @@ function createCurvedWord(text, points) {
 
                 this.endY       = newEndY;
                 this.control1Y  = newControl1Y;
-                this.endX       = this.endX + Math.abs(xDiff * 1.5);
-                this.control1X  = this.control1X + Math.abs(xDiff * 1.5);
+                this.endX       = this.endX + Math.abs(xDiff * 1.5);            // TODO: calculate startX based on a proper mathematical calculation and not a magic number
+                this.control1X  = this.control1X + Math.abs(xDiff * 1.5);       // TODO: calculate startX based on a proper mathematical calculation and not a magic number
 
             }
 
@@ -570,8 +587,8 @@ function createCurvedWord(text, points) {
 
                 this.startY     = newStartY;
                 this.control1Y  = newControl1Y;
-                this.startX     = this.startX - Math.abs(xDiff * 1.5);
-                this.control1X  = this.control1X - Math.abs(xDiff * 1.5);
+                this.startX     = this.startX - Math.abs(xDiff * 1.5);          // TODO: calculate startX based on a proper mathematical calculation and not a magic number
+                this.control1X  = this.control1X - Math.abs(xDiff * 1.5);       // TODO: calculate startX based on a proper mathematical calculation and not a magic number
 
             }
 
@@ -584,33 +601,57 @@ function createCurvedWord(text, points) {
 
         },
 
-        rotateAndStretchWordByLastPoint: function(xDiff, yDiff) {
+        rotateAndStretchWordByLastPoint: function(xDiff, yDiff, mouse_rads_diff) {
+
+            if (xDiff === 0 && yDiff === 0) {
+                return; // no rotation
+            }
 
 
-//            const a_l_big = Math.abs(this.startY - this.endY) + yDiff;
-//            const b_l_big = Math.abs(this.startX - this.endX) + xDiff;
-//            const alpha_l_big = Math.atan(a_l_big / b_l_big);
-//
-//            const r_l = Math.sqrt(Math.abs(this.startY - this.endY) * Math.abs(this.startY - this.endY) + Math.abs(this.startX - this.endX) * Math.abs(this.startX - this.endX));
-//            const a_l = r_l * Math.sin(alpha_l_big);
-//            const b_l = r_l * Math.cos(alpha_l_big);
-//
-//            this.endX = this.startX + b_l;
-//            this.endY = this.startY - a_l;
-//
-//            const a_m_big = Math.abs(this.startY - this.control1Y) + yDiff;
-//            const b_m_big = Math.abs(this.startX - this.control1X) + xDiff;
-//            const alpha_m_big = Math.atan(a_m_big / b_m_big);
-//
-//            const r_m = Math.sqrt(Math.abs(this.startY - this.control1Y) * Math.abs(this.startY - this.control1Y) + Math.abs(this.startX - this.control1X) * Math.abs(this.startX - this.control1X));
-//            const a_m = r_m * Math.sin(alpha_m_big);
-//            const b_m = r_m * Math.cos(alpha_m_big);
-//
-//            this.control1X = this.startX + b_m;
-//            this.control1Y = this.startY - a_m;
-//
-//            this.control2X = this.control1X;
-//            this.control2Y = this.control1Y;
+            const end_radius        = Math.sqrt(Math.abs(this.startX - this.endX)       * Math.abs(this.startX - this.endX)         + Math.abs(this.startY - this.endY)         * Math.abs(this.startY - this.endY));
+            const middle_radius     = Math.sqrt(Math.abs(this.startX - this.control1X)  * Math.abs(this.startX - this.control1X)    + Math.abs(this.startY - this.control1Y)    * Math.abs(this.startY - this.control1Y));
+
+            const e_rads            = Math.asin((this.endY - this.startY) / end_radius);
+            const e_newRads         = e_rads + mouse_rads_diff;
+
+            const m_rads            = Math.asin((this.control1Y - this.startY) / middle_radius);
+            const m_newRads         = m_rads + mouse_rads_diff;
+
+            this.endX               = this.startX + end_radius * Math.cos(e_newRads);
+            this.endY               = this.startY + end_radius * Math.sin(e_newRads);
+
+            this.control1X          = this.startX + middle_radius * Math.cos(m_newRads);
+            this.control1Y          = this.startY + middle_radius * Math.sin(m_newRads);
+
+            this.control2X          = this.control1X;
+            this.control2Y          = this.control1Y;
+
+        },
+
+        rotateAndStretchWordByFirstPoint: function(xDiff, yDiff, mouse_rads_diff) {
+
+            if (xDiff === 0 && yDiff === 0) {
+                return; // no rotation
+            }
+
+
+            const start_radius      = Math.sqrt(Math.abs(this.startX - this.endX)       * Math.abs(this.startX - this.endX)         + Math.abs(this.startY - this.endY)         * Math.abs(this.startY - this.endY));
+            const middle_radius     = Math.sqrt(Math.abs(this.endX - this.control1X)    * Math.abs(this.endX - this.control1X)      + Math.abs(this.endY - this.control1Y)      * Math.abs(this.endY - this.control1Y));
+
+            const s_rads            = Math.asin((this.startY - this.endY) / start_radius);
+            const s_newRads         = s_rads + mouse_rads_diff;
+
+            const m_rads            = Math.asin((this.control1Y - this.endY) / middle_radius);
+            const m_newRads         = m_rads + mouse_rads_diff;
+
+            this.startX             = this.endX - start_radius * Math.cos(s_newRads);
+            this.startY             = this.endY + start_radius * Math.sin(s_newRads);
+
+            this.control1X          = this.endX - middle_radius * Math.cos(m_newRads);
+            this.control1Y          = this.endY + middle_radius * Math.sin(m_newRads);
+
+            this.control2X          = this.control1X;
+            this.control2Y          = this.control1Y;
 
         },
 
@@ -710,7 +751,7 @@ function mouseMove(e) {
         const yDiff = mouse_Y - e.offsetY;
 
         if (objectUnderMouseCursor !== null) {
-            objectUnderMouseCursor.reactToMouseCoordinatesChanges(xDiff, yDiff);
+            objectUnderMouseCursor.reactToMouseCoordinatesChanges(mouse_X, mouse_Y, xDiff, yDiff);
         }
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
