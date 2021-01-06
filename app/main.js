@@ -854,17 +854,17 @@ function startIt()
     ctx                     = canvas.getContext('2d');
 
     ctx.fillStyle           = "black";
-    ctx.font                = "200px language_garden_regular";
-    // ctx.font                = "20px language_garden_regular";
+    // ctx.font                = "200px language_garden_regular";
+    ctx.font                = "20px language_garden_regular";
     // ctx.font                = "80px language_garden_regular";
     // ctx.font                = "40px arial";
 
     // const coordinates       = "0,56,240,56,240,56,570,56";
     // const coordinates       = "0.0, 100, 100, 100, 100, 100, 300, 100";
     const coordinates       = "100,500,340,500,340,500,800,500";
-    // const text              = "abcdefghijklmnopqrstuvwxyz";
+    const text              = "abcdefghijklmnopqrstuvwxyz";
     // const text              = "abcdefghijkl";
-    const text              = "abcdef";
+    // const text              = "abcdef";
     // const text              = "monkey";
     // const text              = "my";
 
