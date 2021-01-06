@@ -494,15 +494,23 @@ function createCurvedWord(text, points) {
 
             const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, this.endX, this.endY));
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
-            if (newLettersPadding >= 0) {
-                this.control1X = newControl1X;
-                this.control1Y = newControl1Y;
+            if (newLettersPadding < 0) {
+                return;
             }
+
+            const b     = Math.abs(this.startY - newControl1Y);
+            const base  = Math.abs(this.startX - this.endX);
+
+            if (b > base / 2) {
+                return;
+            }
+
+            this.control1X = newControl1X;
+            this.control1Y = newControl1Y;
 
             this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
             this.control2Y = this.control1Y;        // second control point to be same as first control point
 
-            return CONTINUE_MOUSE_DRAGGING;
         },
 
         moveWholeWord: function (xDiff, yDiff) {
@@ -518,50 +526,6 @@ function createCurvedWord(text, points) {
 
             this.control2X  = this.control1X;       // since we are using simple bezier curve we have to set
             this.control2Y  = this.control1Y;       // second control point to be same as first control point
-
-            return CONTINUE_MOUSE_DRAGGING;
-
-        },
-
-        rotateWordWithInverseDimitryBendByLastPoint: function(xDiff, yDiff) {
-
-            let newEndX         = this.endX - xDiff;
-            let newEndY         = this.endY - yDiff;
-
-            let newControl1X    = this.control1X - xDiff;
-            let newControl1Y    = this.control1Y - yDiff;
-
-            // const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, newEndX, newEndY));
-            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(this.startX, this.startY, newEndX, newEndY);
-            const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
-            if (newLettersPadding >= 0 && newControl1X >= this.startX + this.lettersCoordinates[0].width / 2) {
-
-                this.endX = newEndX;
-                this.endY = newEndY;
-
-                this.control1X = newControl1X;
-                this.control1Y = newControl1Y;
-
-            } else if (newLettersPadding >= 0) {
-
-                this.endY       = newEndY;
-                this.control1Y  = newControl1Y;
-
-            } else {
-
-                this.endY       = newEndY;
-                this.control1Y  = newControl1Y;
-                this.endX       = this.endX + Math.abs(xDiff * 1.5);            // TODO: calculate startX based on a proper mathematical calculation and not a magic number
-                this.control1X  = this.control1X + Math.abs(xDiff * 1.5);       // TODO: calculate startX based on a proper mathematical calculation and not a magic number
-
-            }
-
-            console.log(newLettersPadding);
-
-
-            this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
-            this.control2Y = this.control1Y;        // second control point to be same as first control point
-
 
         },
 
@@ -607,33 +571,18 @@ function createCurvedWord(text, points) {
 
         },
 
-        rotateAndStretchWordByLastPoint: function(xDiff, yDiff, mouse_radians_diff, mouse_radius_diff) {
+        rotateWordWithInverseDimitryBendByLastPoint: function(xDiff, yDiff) {
 
-            if (xDiff === 0 && yDiff === 0) {
-                return; // no rotation
-            }
+            let newEndX         = this.endX - xDiff;
+            let newEndY         = this.endY - yDiff;
 
+            let newControl1X    = this.control1X - xDiff;
+            let newControl1Y    = this.control1Y - yDiff;
 
-            const end_radius        = Math.sqrt(Math.abs(this.startX - this.endX)       * Math.abs(this.startX - this.endX)         + Math.abs(this.startY - this.endY)         * Math.abs(this.startY - this.endY));
-            const middle_radius     = Math.sqrt(Math.abs(this.startX - this.control1X)  * Math.abs(this.startX - this.control1X)    + Math.abs(this.startY - this.control1Y)    * Math.abs(this.startY - this.control1Y));
-
-            const e_rads            = Math.asin((this.endY - this.startY) / end_radius);
-            const e_newRads         = e_rads + mouse_radians_diff;
-
-            const m_rads            = Math.asin((this.control1Y - this.startY) / middle_radius);
-            const m_newRads         = m_rads + mouse_radians_diff;
-
-            const newEndX           = this.startX + end_radius * mouse_radius_diff * Math.cos(e_newRads);
-            const newEndY           = this.startY + end_radius * mouse_radius_diff * Math.sin(e_newRads);
-
-            const newControl1X      = this.startX + middle_radius * Math.cos(m_newRads);
-            const newControl1Y      = this.startY + middle_radius * Math.sin(m_newRads);
-
+            // const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, newEndX, newEndY));
             const lineLength        = this.getLineLengthBetweenStartAndEndInPx(this.startX, this.startY, newEndX, newEndY);
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
-            if (newLettersPadding >= 0
-                && newControl1X >= this.startX + this.lettersCoordinates[0].width / 2
-            ) {
+            if (newLettersPadding >= 0 && newControl1X >= this.startX + this.lettersCoordinates[0].width / 2) {
 
                 this.endX = newEndX;
                 this.endY = newEndY;
@@ -641,16 +590,25 @@ function createCurvedWord(text, points) {
                 this.control1X = newControl1X;
                 this.control1Y = newControl1Y;
 
-                this.control2X = this.control1X;
-                this.control2Y = this.control1Y;
+            } else if (newLettersPadding >= 0) {
+
+                this.endY       = newEndY;
+                this.control1Y  = newControl1Y;
+
+            } else {
+
+                this.endY       = newEndY;
+                this.control1Y  = newControl1Y;
+                this.endX       = this.endX + Math.abs(xDiff * 1.5);            // TODO: calculate startX based on a proper mathematical calculation and not a magic number
+                this.control1X  = this.control1X + Math.abs(xDiff * 1.5);       // TODO: calculate startX based on a proper mathematical calculation and not a magic number
 
             }
 
-            // if (newControl1X >= this.startX + this.lettersCoordinates[0].width / 2) {
-                return CONTINUE_MOUSE_DRAGGING;
-            // } else {
-            //     return STOP_MOUSE_DRAGGING;
-            // }
+            console.log(newLettersPadding);
+
+
+            this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
+            this.control2Y = this.control1Y;        // second control point to be same as first control point
 
 
         },
@@ -677,12 +635,13 @@ function createCurvedWord(text, points) {
             const newControl1X      = this.endX - middle_radius * Math.cos(m_newRads);
             const newControl1Y      = this.endY + middle_radius * Math.sin(m_newRads);
 
+            if (newControl1X > this.endX - this.lettersCoordinates[0].width / 2) {
+                return;         // don't allow middle point to go in front of the start point
+            }
 
             const lineLength        = this.getLineLengthBetweenStartAndEndInPx(newStartX, newStartY, this.endX, this.endY);
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
-            if (newLettersPadding >= 0
-                && newControl1X <= this.endX - this.lettersCoordinates[0].width / 2
-            ) {
+            if (newLettersPadding >= 0) {
 
                 this.startX = newStartX;
                 this.startY = newStartY;
@@ -690,16 +649,82 @@ function createCurvedWord(text, points) {
                 this.control1X = newControl1X;
                 this.control1Y = newControl1Y;
 
-                this.control2X = this.control1X;
-                this.control2Y = this.control1Y;
+
+            } else {
+
+                mouse_radius_diff = 1;  // just rotate don't squeeze
+
+                const newStartX         = this.endX - start_radius * mouse_radius_diff * Math.cos(s_newRads);
+                const newStartY         = this.endY + start_radius * mouse_radius_diff * Math.sin(s_newRads);
+
+                this.startX = newStartX;
+                this.startY = newStartY;
+
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
 
             }
 
-            // if (newControl1X <= this.endX - this.lettersCoordinates[0].width / 2) {
-                return CONTINUE_MOUSE_DRAGGING;
-            // } else {
-            //     return STOP_MOUSE_DRAGGING;
-            // }
+            this.control2X = this.control1X;
+            this.control2Y = this.control1Y;
+
+
+        },
+
+        rotateAndStretchWordByLastPoint: function(xDiff, yDiff, mouse_radians_diff, mouse_radius_diff) {
+
+            if (xDiff === 0 && yDiff === 0) {
+                return; // no rotation
+            }
+
+
+            const end_radius        = Math.sqrt(Math.abs(this.startX - this.endX)       * Math.abs(this.startX - this.endX)         + Math.abs(this.startY - this.endY)         * Math.abs(this.startY - this.endY));
+            const middle_radius     = Math.sqrt(Math.abs(this.startX - this.control1X)  * Math.abs(this.startX - this.control1X)    + Math.abs(this.startY - this.control1Y)    * Math.abs(this.startY - this.control1Y));
+
+            const e_rads            = Math.asin((this.endY - this.startY) / end_radius);
+            const e_newRads         = e_rads + mouse_radians_diff;
+
+            const m_rads            = Math.asin((this.control1Y - this.startY) / middle_radius);
+            const m_newRads         = m_rads + mouse_radians_diff;
+
+            const newEndX           = this.startX + end_radius * mouse_radius_diff * Math.cos(e_newRads);
+            const newEndY           = this.startY + end_radius * mouse_radius_diff * Math.sin(e_newRads);
+
+            const newControl1X      = this.startX + middle_radius * Math.cos(m_newRads);
+            const newControl1Y      = this.startY + middle_radius * Math.sin(m_newRads);
+
+            if (newControl1X < this.startX + this.lettersCoordinates[0].width / 2) {
+                return;         // don't allow middle point to go in front of the start point
+            }
+
+            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(this.startX, this.startY, newEndX, newEndY);
+            const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
+            if (newLettersPadding >= 0) {
+
+                this.endX = newEndX;
+                this.endY = newEndY;
+
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
+
+            } else {
+
+                mouse_radius_diff = 1;  // just rotate don't squeeze
+
+                const newEndX           = this.startX + end_radius * mouse_radius_diff * Math.cos(e_newRads);
+                const newEndY           = this.startY + end_radius * mouse_radius_diff * Math.sin(e_newRads);
+
+                this.endX = newEndX;
+                this.endY = newEndY;
+
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
+
+
+            }
+
+            this.control2X = this.control1X;
+            this.control2Y = this.control1Y;
 
         },
 
@@ -783,8 +808,6 @@ let mouseButtonIsDown       = false;
 let mouse_X                 = -1;
 let mouse_Y                 = -1;
 let objectUnderMouseCursor  = null;
-let CONTINUE_MOUSE_DRAGGING = 0;
-let STOP_MOUSE_DRAGGING     = 1;
 
 function mouseMove(e) {
 
@@ -802,9 +825,6 @@ function mouseMove(e) {
 
         if (objectUnderMouseCursor !== null) {
             const whatToDoWithMouse = objectUnderMouseCursor.reactToMouseCoordinatesChanges(mouse_X, mouse_Y, xDiff, yDiff);
-            if (whatToDoWithMouse === STOP_MOUSE_DRAGGING) {
-                mouseButtonIsDown = false;
-            }
         }
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -854,17 +874,17 @@ function startIt()
     ctx                     = canvas.getContext('2d');
 
     ctx.fillStyle           = "black";
-    // ctx.font                = "200px language_garden_regular";
-    ctx.font                = "20px language_garden_regular";
+    ctx.font                = "200px language_garden_regular";
+    // ctx.font                = "20px language_garden_regular";
     // ctx.font                = "80px language_garden_regular";
     // ctx.font                = "40px arial";
 
     // const coordinates       = "0,56,240,56,240,56,570,56";
     // const coordinates       = "0.0, 100, 100, 100, 100, 100, 300, 100";
     const coordinates       = "100,500,340,500,340,500,800,500";
-    const text              = "abcdefghijklmnopqrstuvwxyz";
+    // const text              = "abcdefghijklmnopqrstuvwxyz";
     // const text              = "abcdefghijkl";
-    // const text              = "abcdef";
+    const text              = "abcdef";
     // const text              = "monkey";
     // const text              = "my";
 
