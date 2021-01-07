@@ -498,34 +498,21 @@ function createCurvedWord(text, points) {
                 return;
             }
 
-            const base                  = Math.sqrt(Math.abs(this.startX - this.endX) * Math.abs(this.startX - this.endX) + Math.abs(this.startY - this.endY) * Math.abs(this.startY - this.endY));
-            let perpendicularToTheBase  = this.getPerpendicularToTheBase(newControl1X, newControl1Y);
+            const baseLength                    = Math.sqrt(Math.abs(this.startX - this.endX) * Math.abs(this.startX - this.endX) + Math.abs(this.startY - this.endY) * Math.abs(this.startY - this.endY));
+            const perpendicularToTheBaseLength  = this.getPerpendicularLengthToTheBase(newControl1X, newControl1Y);
 
-            if (perpendicularToTheBase > base / 2) {
-                return;
+            if (perpendicularToTheBaseLength > baseLength / 2) {
+
+                this.control1X = newControl1X;              // allow only X coordinate to be moved
+
+            } else {
+
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
             }
-
-            this.control1X = newControl1X;
-            this.control1Y = newControl1Y;
 
             this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
             this.control2Y = this.control1Y;        // second control point to be same as first control point
-
-        },
-
-        // https://math.semestr.ru/line/equation.php
-        // https://math.semestr.ru/line/perpendicular.php
-
-        getPerpendicularToTheBase: function(newControl1X, newControl1Y) {
-
-            let x_p = newControl1X;                 // x coordinate of the perpendicular to the base (start, end)
-            let y_p = this.startY;                  // y coordinate of the perpendicular to the base (start, end)
-            if (this.startY !== this.endY) {
-                x_p = (newControl1Y - ((this.endX - this.startX) / (this.endY - this.startY) * newControl1X)) / ((this.endY - this.startY) / (this.endX - this.startX) - (this.endX - this.startX)/(this.endY - this.startY));
-                y_p = (this.endY - this.startY)/(this.endX - this.startX) * x_p - (this.startX * (this.endY - this.startY) / (this.endX - this.startX)) + this.startY;
-            }
-
-            return Math.sqrt(Math.abs(x_p - newControl1X) * Math.abs(x_p - newControl1X) + Math.abs(y_p - newControl1Y) * Math.abs(y_p - newControl1Y))
 
         },
 
@@ -741,6 +728,26 @@ function createCurvedWord(text, points) {
 
             this.control2X = this.control1X;
             this.control2Y = this.control1Y;
+
+        },
+
+        // -------------------------------------------------------------------------------------------------------------
+        // geometrical functions
+        // -------------------------------------------------------------------------------------------------------------
+
+        // https://math.semestr.ru/line/equation.php
+        // https://math.semestr.ru/line/perpendicular.php
+
+        getPerpendicularLengthToTheBase: function(newControl1X, newControl1Y) {
+
+            let x_p = newControl1X;                 // x coordinate of the perpendicular to the base (start, end)
+            let y_p = this.startY;                  // y coordinate of the perpendicular to the base (start, end)
+            if (this.startY !== this.endY) {
+                x_p = (newControl1Y - ((this.endX - this.startX) / (this.endY - this.startY) * newControl1X)) / ((this.endY - this.startY) / (this.endX - this.startX) - (this.endX - this.startX)/(this.endY - this.startY));
+                y_p = (this.endY - this.startY)/(this.endX - this.startX) * x_p - (this.startX * (this.endY - this.startY) / (this.endX - this.startX)) + this.startY;
+            }
+
+            return Math.sqrt(Math.abs(x_p - newControl1X) * Math.abs(x_p - newControl1X) + Math.abs(y_p - newControl1Y) * Math.abs(y_p - newControl1Y))
 
         },
 
