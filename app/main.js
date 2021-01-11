@@ -659,7 +659,7 @@ function createCurvedWord(text, points) {
             const newStartX         = this.endX - start_radius * mouse_radius_diff * Math.cos(s_newRads);
             const newStartY         = this.endY + start_radius * mouse_radius_diff * Math.sin(s_newRads);
 
-            const newControl1X      = this.endX - middle_radius * mouse_radius_diff * Math.cos(m_newRads);
+            const newControl1X      = this.endX - middle_radius * Math.cos(m_newRads);
             const newControl1Y      = this.endY + middle_radius * Math.sin(m_newRads);
 
             if (newControl1X > this.endX - this.lettersCoordinates[0].width / 2) {
@@ -691,8 +691,8 @@ function createCurvedWord(text, points) {
                 this.startX = newStartX;
                 this.startY = newStartY;
 
-                this.control1X = this.endX - middle_radius * mouse_radius_diff * Math.cos(m_newRads);
-                this.control1Y = this.endY + middle_radius * mouse_radius_diff * Math.sin(m_newRads);
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
 
             }
 
@@ -721,7 +721,7 @@ function createCurvedWord(text, points) {
             const newEndX           = this.startX + end_radius * mouse_radius_diff * Math.cos(e_newRads);
             const newEndY           = this.startY + end_radius * mouse_radius_diff * Math.sin(e_newRads);
 
-            const newControl1X      = this.startX + middle_radius * mouse_radius_diff * Math.cos(m_newRads);
+            const newControl1X      = this.startX + middle_radius * Math.cos(m_newRads);
             const newControl1Y      = this.startY + middle_radius * Math.sin(m_newRads);
 
             if (newControl1X < this.startX + this.lettersCoordinates[0].width / 2) {
@@ -752,8 +752,8 @@ function createCurvedWord(text, points) {
                 this.endX = newEndX;
                 this.endY = newEndY;
 
-                this.control1X = this.startX + middle_radius * mouse_radius_diff * Math.cos(m_newRads);;
-                this.control1Y = this.startY + middle_radius * mouse_radius_diff * Math.sin(m_newRads);
+                this.control1X = newControl1X;
+                this.control1Y = newControl1Y;
 
 
             }
