@@ -509,10 +509,10 @@ function createCurvedWord(text, points) {
             let newControl1Y = this.control1Y - yDiff;
 
             // checking movement on the X scale so it's between word start and end points!
-            if (newControl1X > this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width / 2) {
-                newControl1X = this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width / 2;
-            } else if (newControl1X < this.startX + this.lettersCoordinates[0].width / 2) {
-                newControl1X = this.startX + this.lettersCoordinates[0].width / 2;
+            if (newControl1X > this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width) {
+                newControl1X = this.endX - this.lettersCoordinates[this.lettersCoordinates.length - 1].width;
+            } else if (newControl1X < this.startX + this.lettersCoordinates[0].width) {
+                newControl1X = this.startX + this.lettersCoordinates[0].width;
             }
 
             const lineLength        = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, this.endX, this.endY));
