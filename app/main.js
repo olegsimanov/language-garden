@@ -54,6 +54,7 @@ function createCurvedWord(text, points) {
             this.lettersCoordinates             = this.calculateLettersCoordinates(ctx, virtualPointsCoordinates, this.calculatePaddingBetweenLetters(this.getCurveLengthInPx(virtualPointsCoordinates), this.text.length - 1));                  // ctx here is used to get letter height and width
             this.letterBoxPaths                 = this.calculateLetterBoxPaths(this.lettersCoordinates);
             this.bezierCurveControlPointPath    = this.calculateBezierCurveControlPointPath(this.control1X, this.control1Y, ctx.measureText(this.text[0]).width / 1.5);
+            this.perpendicularPath              = this.calculatePerpendicularPath(this.startX, this.startY, this.endX, this.endY, this.control1X, this.control1Y);
 
             // this.drawBezierCurveUsingAPI(ctx);                                   // for comparison purposes
             this.drawWord(ctx, this.lettersCoordinates, this.letterBoxPaths);
@@ -232,16 +233,25 @@ function createCurvedWord(text, points) {
 
         },
 
-        getCurveLengthInPx: function (virtualPointsCoordinates) {
-            return virtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
+        calculatePerpendicularPath: function(x1, y1, x2, y2, xm, ym) {
+
+            const [intersect_x, intersect_y]    = this.getIntersectionPointBetweenBaseLineAndPerpendicularToTheBase(x1, y1, x2, y2, xm, ym);
+
+            const path = new Path2D();
+
+            path.moveTo(xm, ym);
+            path.lineTo(intersect_x, intersect_y);
+            path.moveTo(x1, y1);
+            path.lineTo(x2, y2);
+            path.lineTo(xm, ym);
+            path.lineTo(x1, y1);
+
+            return path;
+
         },
 
-        getLineLengthBetweenStartAndEndInPx: function(startX, startY, endX, endY) {
-
-            const a = Math.abs(startX - endX)
-            const b = Math.abs(startY - endY);
-            return Math.sqrt(a * a + b * b);
-
+        getCurveLengthInPx: function (virtualPointsCoordinates) {
+            return virtualPointsCoordinates[this.maxVirtualIndex - 1].rotation_hypotenuse_accHypotenuse.distanceFromStart;
         },
 
         calculatePaddingBetweenLetters: function (curveLengthInPx, numberOfPaddings) {
@@ -348,6 +358,7 @@ function createCurvedWord(text, points) {
         drawDebugInfo: function (ctx, letterBoxPaths, bezierCurveControlPointPath) {
 
             this.drawRoundHandle(ctx, bezierCurveControlPointPath);
+            // this.drawPerpendicular(ctx);
             // this.drawSingleLetterBoxAt(ctx, letterBoxPaths, 0);
             // this.drawSingleLetterBoxAt(ctx, letterBoxPaths, this.text.length - 1);
 
@@ -360,6 +371,18 @@ function createCurvedWord(text, points) {
 
             ctx.strokeStyle = "red"
             ctx.stroke(bezierCurveControlPointPath);
+
+            ctx.restore();
+
+        },
+
+        drawPerpendicular: function(ctx) {
+
+            ctx.save();
+            ctx.beginPath();
+
+            ctx.strokeStyle = "red";
+            ctx.stroke(this.perpendicularPath);
 
             ctx.restore();
 
@@ -452,7 +475,7 @@ function createCurvedWord(text, points) {
                 newStartX = this.control1X;
             }
 
-            const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(newStartX, newStartY, this.control1X, this.control1Y, this.control1X, this.control1Y, this.endX, this.endY));
+            const lineLength        = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(newStartX, newStartY, this.control1X, this.control1Y, this.control1X, this.control1Y, this.endX, this.endY));
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding >= 0) {
                 this.startX = newStartX;
@@ -471,7 +494,7 @@ function createCurvedWord(text, points) {
                 newEndX = this.control1X;
             }
 
-            const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.endY, this.control1X, this.control1Y, this.control1X, this.control1Y, newEndX, newEndY));
+            const lineLength        = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.endY, this.control1X, this.control1Y, this.control1X, this.control1Y, newEndX, newEndY));
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding >= 0) {
                 this.endX = newEndX;
@@ -492,23 +515,21 @@ function createCurvedWord(text, points) {
                 newControl1X = this.startX + this.lettersCoordinates[0].width / 2;
             }
 
-            const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, this.endX, this.endY));
+            const lineLength        = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, this.endX, this.endY));
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding < 0) {
                 return;
             }
 
-            const baseLength                    = Math.sqrt(Math.abs(this.startX - this.endX) * Math.abs(this.startX - this.endX) + Math.abs(this.startY - this.endY) * Math.abs(this.startY - this.endY));
-            const perpendicularToTheBaseLength  = this.getPerpendicularLengthToTheBase(newControl1X, newControl1Y);
+            const baseLength                    = this.getShortestDistanceBetweenPoints(this.startX, this.startY, this.endX, this.endY);
+            const [intersect_x, intersect_y]    = this.getIntersectionPointBetweenBaseLineAndPerpendicularToTheBase(this.startX, this.startY, this.endX, this.endY, newControl1X, newControl1Y);
+            const perpendicularToTheBaseLength  = this.getShortestDistanceBetweenPoints(intersect_x, intersect_y, newControl1X, newControl1Y);
 
-            if (perpendicularToTheBaseLength > baseLength / 2) {
-
-                this.control1X = newControl1X;              // allow only X coordinate to be moved
-
-            } else {
+            if (perpendicularToTheBaseLength <= baseLength / 2) {
 
                 this.control1X = newControl1X;
                 this.control1Y = newControl1Y;
+
             }
 
             this.control2X = this.control1X;        // since we are using simple bezier curve we have to set
@@ -541,7 +562,7 @@ function createCurvedWord(text, points) {
             let newControl1Y    = this.control1Y - yDiff;
 
             // const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(newStartX, newStartY, newControl1X, newControl1Y, newControl1X, newControl1Y, this.endX, this.endY));
-            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(newStartX, newStartY, this.endX, this.endY);
+            const lineLength        = this.getShortestDistanceBetweenPoints(newStartX, newStartY, this.endX, this.endY);
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding >= 0 && newControl1X <= this.endX - this.lettersCoordinates[0].width / 2) {
 
@@ -583,7 +604,7 @@ function createCurvedWord(text, points) {
             let newControl1Y    = this.control1Y - yDiff;
 
             // const lineLength = this.getCurveLengthInPx(this.calculateVirtualPointsCoordinates(this.startX, this.startY, newControl1X, newControl1Y, newControl1X, newControl1Y, newEndX, newEndY));
-            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(this.startX, this.startY, newEndX, newEndY);
+            const lineLength        = this.getShortestDistanceBetweenPoints(this.startX, this.startY, newEndX, newEndY);
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding >= 0 && newControl1X >= this.startX + this.lettersCoordinates[0].width / 2) {
 
@@ -639,10 +660,14 @@ function createCurvedWord(text, points) {
             const newControl1Y      = this.endY + middle_radius * Math.sin(m_newRads);
 
             if (newControl1X > this.endX - this.lettersCoordinates[0].width / 2) {
-                return;         // don't allow middle point to go in front of the start point
+                return;         // don't allow middle point to go in front of the end point when rotating
             }
 
-            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(newStartX, newStartY, this.endX, this.endY);
+            if (newStartX > newControl1X) {
+                return;         // don't allow start poing to go to the right of the middle point
+            }
+
+            const lineLength        = this.getShortestDistanceBetweenPoints(newStartX, newStartY, this.endX, this.endY);
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding >= 0) {
 
@@ -700,7 +725,11 @@ function createCurvedWord(text, points) {
                 return;         // don't allow middle point to go in front of the start point
             }
 
-            const lineLength        = this.getLineLengthBetweenStartAndEndInPx(this.startX, this.startY, newEndX, newEndY);
+            if (newEndX < newControl1X) {
+                return;         // don't allow end point to go in front of the middle point
+            }
+
+            const lineLength        = this.getShortestDistanceBetweenPoints(this.startX, this.startY, newEndX, newEndY);
             const newLettersPadding = this.calculatePaddingBetweenLetters(lineLength, this.text.length - 1);
             if (newLettersPadding >= 0) {
 
@@ -738,16 +767,27 @@ function createCurvedWord(text, points) {
         // https://math.semestr.ru/line/equation.php
         // https://math.semestr.ru/line/perpendicular.php
 
-        getPerpendicularLengthToTheBase: function(newControl1X, newControl1Y) {
+        getIntersectionPointBetweenBaseLineAndPerpendicularToTheBase: function(x1, y1, x2, y2, xm, ym) {
 
-            let x_p = newControl1X;                 // x coordinate of the perpendicular to the base (start, end)
-            let y_p = this.startY;                  // y coordinate of the perpendicular to the base (start, end)
-            if (this.startY !== this.endY) {
-                x_p = (newControl1Y - ((this.endX - this.startX) / (this.endY - this.startY) * newControl1X)) / ((this.endY - this.startY) / (this.endX - this.startX) - (this.endX - this.startX)/(this.endY - this.startY));
-                y_p = (this.endY - this.startY)/(this.endX - this.startX) * x_p - (this.startX * (this.endY - this.startY) / (this.endX - this.startX)) + this.startY;
+            let x = xm;
+            let y = y1;
+
+            if (y1 !== y2) {
+
+                x = (xm * (x2 - x1) / ((-1) * y2 - (-1) * y1)  + (-1) * ym - (-1) * y1 + x1 * ((-1) * y2 - (-1) * y1) / (x2 - x1)) / (((-1) * y2 - (-1) * y1) / (x2 - x1) + (x2 - x1) / ((-1) * y2 - (-1) * y1));
+                y = (-1) * (x * (((-1) * y2 - (-1) * y1) / (x2 - x1)) - x1 * (((-1) * y2 - (-1) * y1) / (x2 - x1)) + (-1) * y1);
+
             }
 
-            return Math.sqrt(Math.abs(x_p - newControl1X) * Math.abs(x_p - newControl1X) + Math.abs(y_p - newControl1Y) * Math.abs(y_p - newControl1Y))
+            return [x, y];
+
+        },
+
+        getShortestDistanceBetweenPoints: function(x1, y1, x2, y2) {
+
+            const a = Math.abs(x1 - x2)
+            const b = Math.abs(y1 - y2);
+            return Math.sqrt(a * a + b * b);
 
         },
 
@@ -897,17 +937,17 @@ function startIt()
     ctx                     = canvas.getContext('2d');
 
     ctx.fillStyle           = "black";
-    ctx.font                = "200px language_garden_regular";
+    // ctx.font                = "200px language_garden_regular";
     // ctx.font                = "20px language_garden_regular";
-    // ctx.font                = "80px language_garden_regular";
+    ctx.font                = "80px language_garden_regular";
     // ctx.font                = "40px arial";
 
     // const coordinates       = "0,56,240,56,240,56,570,56";
     // const coordinates       = "0.0, 100, 100, 100, 100, 100, 300, 100";
     const coordinates       = "100,500,340,500,340,500,800,500";
     // const text              = "abcdefghijklmnopqrstuvwxyz";
-    // const text              = "abcdefghijkl";
-    const text              = "abcdef";
+    const text              = "abcdefghijkl";
+    // const text              = "abcdef";
     // const text              = "monkey";
     // const text              = "my";
 
