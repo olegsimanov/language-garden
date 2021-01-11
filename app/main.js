@@ -949,9 +949,9 @@ function startIt()
     // const coordinates       = "0.0, 100, 100, 100, 100, 100, 300, 100";
     const coordinates       = "100,500,340,500,340,500,800,500";
     // const text              = "abcdefghijklmnopqrstuvwxyz";
-    const text              = "abcdefghijkl";
+    // const text              = "abcdefghijkl";
     // const text              = "abcdef";
-    // const text              = "monkey";
+    const text              = "monkey";
     // const text              = "my";
 
     curvedWord = createCurvedWord(text, coordinates.split(','));
