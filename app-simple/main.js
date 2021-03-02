@@ -25,9 +25,18 @@ function App(ctx, width, height) {
 
     let app = {};
 
+    // ---------------------------------------------------------------------------------------------------------------------
+    // canvas to draw on
+    // ---------------------------------------------------------------------------------------------------------------------
+
     app.width           = width;
     app.height          = height;
     app.ctx             = ctx;            // we use this to draw
+
+    // ---------------------------------------------------------------------------------------------------------------------
+    // graphical elements
+    // ---------------------------------------------------------------------------------------------------------------------
+
     app.fixedLetters    = [];
     app.movableLetters  = [];
 
@@ -75,7 +84,7 @@ function App(ctx, width, height) {
 
                 ctx.save();
                 ctx.beginPath();
-                ctx.fillStyle = "green";
+                ctx.fillStyle = "black";
                 // ctx.translate(x, y);
                 // ctx.rotate(radsToRotate);
                 // ctx.fillText(letter, 0, 0);
@@ -209,6 +218,9 @@ function App(ctx, width, height) {
 
         console.log("redrawing...")
         ctx.clearRect(0, 0, width, height);
+        if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
+            app.selectedLetter.draw(ctx);
+        }
         this.separator.draw(ctx, width, height);
         this.fixedLetters.forEach(fl => fl.draw(ctx))
         this.movableLetters.forEach(ml => ml.draw(ctx))
@@ -219,27 +231,23 @@ function App(ctx, width, height) {
     // mouse handling logic
     // ---------------------------------------------------------------------------------------------------------------------
 
-    app.mouseButtonIsDown =       false;
-    app.mouse_X =                 -1;
-    app.mouse_Y =                -1;
-    app.actionName =             null;
+    app.mouseButtonIsDown   = false;
+    app.mouse_X             = -1;
+    app.mouse_Y             = -1;
+    app.selectedLetter      = null;
 
     app.mouseMove   = function(e) {
 
-        if (this.mouseButtonIsDown) {
+        if (app.mouseButtonIsDown) {
 
-            const highlightedLetter = app.fixedLetters.find(fl => fl.isHighlighted)
-            if (highlightedLetter !== null) {
-                // initiate movable letter creation action
-
-            } else {
-                // initiate resizing separator action
+            if (app.selectedLetter !== null) {
+                app.selectedLetter.move(e.offsetX, e.offsetY);
             }
 
         } else {
 
             // highlight object under mouse cursor
-            app.fixedLetters.forEach(l => l.triggerHighlight(l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)));
+            app.movableLetters.concat(app.fixedLetters).forEach(l => l.triggerHighlight(l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)));
             app.separator.triggerHighlight(app.separator.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY));
         }
 
@@ -251,11 +259,24 @@ function App(ctx, width, height) {
     }
 
     app.mouseButtonDown = function(e) {
-        this.mouseButtonIsDown = true;
+        app.mouseButtonIsDown = true;
+        const highlightedLetter = app.fixedLetters.concat(app.movableLetters).find(l => l.isHighlighted)
+        if (highlightedLetter !== undefined && highlightedLetter !== null) {
+            highlightedLetter.triggerHighlight(false);
+            if (highlightedLetter.isTemplate) {
+                app.selectedLetter = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
+            } else {
+                app.selectedLetter = highlightedLetter;
+            }
+        }
     }
 
     app.mouseButtonUp = function(e) {
-        this.mouseButtonIsDown = false;
+        app.mouseButtonIsDown = false;
+        if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
+            app.movableLetters.push(app.selectedLetter);
+            app.selectedLetter = null;
+        }
     }
 
     app.mouseClick = function (e) {
