@@ -55,28 +55,38 @@ function App(ctx, width, height) {
             height:             height,
 
             framePath:          new Path2D(),
+            crossPath:          new Path2D(),
 
             isTemplate:         isTemplate,
             isHighlighted:      false,
+            isEditable:         false,
+            isBeingCloned:      false,
 
 
-            move: function(x, y) {
+            moveBy: function(xDiff, yDiff) {
+
+                this.x += xDiff;
+                this.y += yDiff;
+
+                this.calculateLetterCoordinates();
+                this.calculateMetaCoordinates();
+
+            },
+
+            moveTo: function(x, y) {
 
                 this.x = x;
                 this.y = y;
 
                 this.calculateLetterCoordinates();
-                this.calculateFrameCoordinates();
+                this.calculateMetaCoordinates();
 
             },
 
             draw: function(ctx) {
 
                 this.drawName(ctx);
-                if (this.isHighlighted) {
-                    this.drawFrame(ctx);
-                }
-
+                this.drawFrame(ctx);
 
             },
 
@@ -97,11 +107,20 @@ function App(ctx, width, height) {
             drawFrame: function(ctx) {
 
                 ctx.save();
-                ctx.strokeStyle = "red";
-                ctx.lineWidth = 1;
-                ctx.stroke(this.framePath);
-                ctx.restore();
 
+                if (this.isHighlighted) {
+
+                    ctx.strokeStyle = "red";
+                    ctx.lineWidth = 1;
+                    ctx.stroke(this.framePath);
+
+                    if (!this.isTemplate) {
+                        ctx.stroke(this.crossPath);
+                    }
+
+                }
+
+                ctx.restore();
 
             },
 
@@ -109,7 +128,7 @@ function App(ctx, width, height) {
 
             },
 
-            calculateFrameCoordinates: function() {
+            calculateMetaCoordinates: function() {
 
                 this.framePath = new Path2D();
                 this.framePath.moveTo(this.x, this.y);
@@ -117,6 +136,13 @@ function App(ctx, width, height) {
                 this.framePath.lineTo(this.x + this.width, this.y - this.height);
                 this.framePath.lineTo(this.x + this.width, this.y);
                 this.framePath.closePath();
+
+                this.crossPath = new Path2D();
+                this.crossPath.moveTo(this.x, this.y - this.height / 2);
+                this.crossPath.lineTo(this.x + this.width, this.y - this.height / 2);
+                this.crossPath.moveTo(this.x + this.width / 2, this.y - this.height);
+                this.crossPath.lineTo(this.x + this.width / 2, this.y);
+
 
             },
 
@@ -176,6 +202,12 @@ function App(ctx, width, height) {
 
             triggerHighlight: function(isHighlighted) {
                 this.isHighlighted = isHighlighted;
+            },
+
+            isBelow: function(letter) {
+
+                return letter.y > panelYOffset;
+
             }
 
 
@@ -199,7 +231,7 @@ function App(ctx, width, height) {
             let y           = panelYOffset + height + offsetFromTheTopBorder
 
             let letter = this.createLetter(symbol, width, height,true);
-            letter.move(x, y)
+            letter.moveTo(x, y)
             this.fixedLetters.push(letter)
 
             currentOffsetFromLeft += (width + gapBetweenLetters);
@@ -241,7 +273,9 @@ function App(ctx, width, height) {
         if (app.mouseButtonIsDown) {
 
             if (app.selectedLetter !== null) {
-                app.selectedLetter.move(e.offsetX, e.offsetY);
+                let xDiff = e.offsetX - app.mouse_X;
+                let yDiff = e.offsetY - app.mouse_Y;
+                app.selectedLetter.moveBy(xDiff, yDiff);
             }
 
         } else {
@@ -262,9 +296,12 @@ function App(ctx, width, height) {
         app.mouseButtonIsDown = true;
         const highlightedLetter = app.fixedLetters.concat(app.movableLetters).find(l => l.isHighlighted)
         if (highlightedLetter !== undefined && highlightedLetter !== null) {
-            highlightedLetter.triggerHighlight(false);
             if (highlightedLetter.isTemplate) {
+                highlightedLetter.triggerHighlight(false);
                 app.selectedLetter = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
+                app.selectedLetter.triggerHighlight(true);
+                app.selectedLetter.isBeingCloned = true;
+                app.selectedLetter.moveTo(highlightedLetter.x, highlightedLetter.y);
             } else {
                 app.selectedLetter = highlightedLetter;
             }
@@ -274,12 +311,18 @@ function App(ctx, width, height) {
     app.mouseButtonUp = function(e) {
         app.mouseButtonIsDown = false;
         if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
-            app.movableLetters.push(app.selectedLetter);
+            if (!app.separator.isBelow(app.selectedLetter) && app.selectedLetter.isBeingCloned) {
+                app.movableLetters.push(app.selectedLetter);
+                app.selectedLetter.isBeingCloned = false;
+            }
             app.selectedLetter = null;
         }
+        app.redrawEverything(ctx, width, height);
     }
 
     app.mouseClick = function (e) {
+
+        // use this method with shift pressed to select multiple letters?
 
     }
 
