@@ -53,13 +53,14 @@ function App(ctx, width, height) {
             y:                  0,
             width:              width,
             height:             height,
+            rad:                0,
 
             framePath:          new Path2D(),
             crossPath:          new Path2D(),
 
             isTemplate:         isTemplate,
-            isHighlighted:      false,
-            isEditable:         false,
+            isHighlighted:      false,              // should have a frame
+            isSelected:         false,              // should have a cross
             isBeingCloned:      false,
 
 
@@ -86,7 +87,7 @@ function App(ctx, width, height) {
             draw: function(ctx) {
 
                 this.drawName(ctx);
-                this.drawFrame(ctx);
+                this.drawMeta(ctx);
 
             },
 
@@ -95,16 +96,16 @@ function App(ctx, width, height) {
                 ctx.save();
                 ctx.beginPath();
                 ctx.fillStyle = "black";
-                // ctx.translate(x, y);
-                // ctx.rotate(radsToRotate);
-                // ctx.fillText(letter, 0, 0);
-                ctx.fillText(this.symbol, this.x, this.y);
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rad);
+                ctx.fillText(this.symbol, 0, 0);
+                // ctx.fillText(this.symbol, this.x, this.y);
                 ctx.closePath();
                 ctx.restore();
 
             },
 
-            drawFrame: function(ctx) {
+            drawMeta: function(ctx) {
 
                 ctx.save();
 
@@ -114,10 +115,13 @@ function App(ctx, width, height) {
                     ctx.lineWidth = 1;
                     ctx.stroke(this.framePath);
 
+                }
+
+                if (this.isSelected) {
                     if (!this.isTemplate) {
+                        ctx.strokeStyle = "red";
                         ctx.stroke(this.crossPath);
                     }
-
                 }
 
                 ctx.restore();
@@ -138,10 +142,10 @@ function App(ctx, width, height) {
                 this.framePath.closePath();
 
                 this.crossPath = new Path2D();
-                this.crossPath.moveTo(this.x, this.y - this.height / 2);
-                this.crossPath.lineTo(this.x + this.width, this.y - this.height / 2);
-                this.crossPath.moveTo(this.x + this.width / 2, this.y - this.height);
-                this.crossPath.lineTo(this.x + this.width / 2, this.y);
+                this.crossPath.moveTo(this.x - 20, this.y - this.height / 2);
+                this.crossPath.lineTo(this.x + this.width + 20, this.y - this.height / 2);
+                this.crossPath.moveTo(this.x + this.width / 2, this.y - this.height - 20);
+                this.crossPath.lineTo(this.x + this.width / 2, this.y + 20);
 
 
             },
@@ -149,6 +153,12 @@ function App(ctx, width, height) {
             isMouseCursorOverMe: function(ctx, x, y) {
 
                 return ctx.isPointInPath(this.framePath, x, y)
+
+            },
+
+            isOverCross: function(ctx, x, y) {
+
+                return ctx.isPointInStroke(this.crossPath, x, y);
 
             },
 
@@ -165,18 +175,13 @@ function App(ctx, width, height) {
 
             panelYOffset:           panelYOffset,
             path:                   new Path2D(),
-            isHighlighted:          false,
 
             draw: function(ctx, width, height) {
 
 
                 ctx.save();
                 ctx.strokeStyle = "black";
-                if (this.isHighlighted) {
-                    ctx.lineWidth = 3;
-                } else {
-                    ctx.lineWidth = 1;
-                }
+                ctx.lineWidth = 1;
 
                 ctx.stroke(this.path);
                 ctx.restore();
@@ -192,16 +197,6 @@ function App(ctx, width, height) {
                 this.path.lineTo(0, this.panelYOffset + 1);
                 this.path.closePath();
 
-            },
-
-            isMouseCursorOverMe: function(ctx, x, y) {
-
-                return ctx.isPointInPath(this.path, x, y);
-
-            },
-
-            triggerHighlight: function(isHighlighted) {
-                this.isHighlighted = isHighlighted;
             },
 
             isBelow: function(letter) {
@@ -250,8 +245,8 @@ function App(ctx, width, height) {
 
         console.log("redrawing...")
         ctx.clearRect(0, 0, width, height);
-        if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
-            app.selectedLetter.draw(ctx);
+        if (app.letterInCreation !== undefined && app.letterInCreation !== null) {
+            app.letterInCreation.draw(ctx);
         }
         this.separator.draw(ctx, width, height);
         this.fixedLetters.forEach(fl => fl.draw(ctx))
@@ -266,23 +261,45 @@ function App(ctx, width, height) {
     app.mouseButtonIsDown   = false;
     app.mouse_X             = -1;
     app.mouse_Y             = -1;
+    app.letterInCreation    = null;
     app.selectedLetter      = null;
 
     app.mouseMove   = function(e) {
 
         if (app.mouseButtonIsDown) {
 
-            if (app.selectedLetter !== null) {
+            let letterToBeMoved = null;
+            if (app.letterInCreation !== null) {
+                letterToBeMoved = app.letterInCreation;
+            } else if (app.selectedLetter !== null) {
+                if (app.selectedLetter.isHighlighted) {
+                    letterToBeMoved = app.selectedLetter;
+                }
+            }
+
+            if (letterToBeMoved !== null) {
                 let xDiff = e.offsetX - app.mouse_X;
                 let yDiff = e.offsetY - app.mouse_Y;
-                app.selectedLetter.moveBy(xDiff, yDiff);
+                letterToBeMoved.moveBy(xDiff, yDiff);
             }
+
 
         } else {
 
             // highlight object under mouse cursor
-            app.movableLetters.concat(app.fixedLetters).forEach(l => l.triggerHighlight(l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)));
-            app.separator.triggerHighlight(app.separator.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY));
+            app.movableLetters.concat(app.fixedLetters).forEach(l => {
+                if (l.isSelected) {
+                    l.triggerHighlight(false);
+                    if (l.isOverCross(ctx, e.offsetX, e.offsetY)) {
+                        ctx.canvas.style.cursor = "pointer";
+                    } else {
+                        ctx.canvas.style.cursor = "";
+                    }
+                } else if (app.selectedLetter === undefined || app.selectedLetter === null) {
+                    l.triggerHighlight(l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY));
+                }
+            });
+
         }
 
         app.redrawEverything(ctx, width, height);
@@ -293,37 +310,77 @@ function App(ctx, width, height) {
     }
 
     app.mouseButtonDown = function(e) {
+
         app.mouseButtonIsDown = true;
         const highlightedLetter = app.fixedLetters.concat(app.movableLetters).find(l => l.isHighlighted)
         if (highlightedLetter !== undefined && highlightedLetter !== null) {
             if (highlightedLetter.isTemplate) {
+                if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
+                    app.selectedLetter.isSelected = false;
+                }
                 highlightedLetter.triggerHighlight(false);
-                app.selectedLetter = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
-                app.selectedLetter.triggerHighlight(true);
-                app.selectedLetter.isBeingCloned = true;
-                app.selectedLetter.moveTo(highlightedLetter.x, highlightedLetter.y);
+                app.letterInCreation = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
+                app.letterInCreation.triggerHighlight(true);
+                app.letterInCreation.isBeingCloned = true;
+                app.letterInCreation.moveTo(highlightedLetter.x, highlightedLetter.y);
             } else {
+                if (app.selectedLetter !== undefined && app.selectedLetter !== null &&
+                    app.selectedLetter !== highlightedLetter) {
+                    app.selectedLetter.isSelected = false;
+                }
                 app.selectedLetter = highlightedLetter;
             }
         }
+        console.log("mouseButton pressed")
     }
 
     app.mouseButtonUp = function(e) {
+
         app.mouseButtonIsDown = false;
-        if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
-            if (!app.separator.isBelow(app.selectedLetter) && app.selectedLetter.isBeingCloned) {
-                app.movableLetters.push(app.selectedLetter);
-                app.selectedLetter.isBeingCloned = false;
+        if (app.letterInCreation !== undefined && app.letterInCreation !== null) {
+            if (!app.separator.isBelow(app.letterInCreation) && app.letterInCreation.isBeingCloned) {
+                app.movableLetters.push(app.letterInCreation);
             }
-            app.selectedLetter = null;
         }
-        app.redrawEverything(ctx, width, height);
+
+        console.log("mouseButton released")
     }
 
     app.mouseClick = function (e) {
 
-        // use this method with shift pressed to select multiple letters?
+        if (app.letterInCreation !== null) {
+            // mouse click comes after mouse button up
+            // so if letterInCreation wasn't null then mouseClicked just followed mouseButtonUp while creating a new letter
+            app.letterInCreation.isBeingCloned = false;
+            app.letterInCreation = null;
 
+        } else {
+
+            const highlightedLetter = app.fixedLetters.concat(app.movableLetters).find(l => l.isHighlighted)
+            if (highlightedLetter !== undefined && highlightedLetter !== null) {
+
+                if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
+                    if (app.selectedLetter === highlightedLetter) {
+                        app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
+                    } else {
+                        app.selectedLetter.isSelected = false;
+                        highlightedLetter.isSelected = true;
+                    }
+                }
+                app.selectedLetter = highlightedLetter;
+
+            } else if (app.selectedLetter !== undefined && app.selectedLetter !== null
+                && app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+
+                app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
+                app.selectedLetter = null;
+
+            }
+
+            app.redrawEverything(ctx, width, height);
+        }
+
+        console.log("mouseClicked")
     }
 
 
