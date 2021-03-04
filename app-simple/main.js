@@ -262,18 +262,19 @@ function App(ctx, width, height) {
     app.mouseButtonIsDown   = false;
     app.mouse_X             = -1;
     app.mouse_Y             = -1;
-    app.letterInCreation    = null;
-    app.selectedLetter      = null;
+
+    app.letterToBeEdited    = null;             // a selected letter can be either scaled or rotated
+    app.letterInCreation    = null;             // special case where a new letter is being created
 
     app.mouseMove   = function(e) {
 
-        if (app.isDragging()) {
+        if (app.isManipulatingObject()) {
 
-            app.processDragging(e);
+            app.processObjectManipulation(e);
 
         } else {
 
-            app.processMoving(e);
+            app.highlightObjectUnderMouseCursor(e);
 
         }
 
@@ -293,9 +294,9 @@ function App(ctx, width, height) {
 
             if (highlightedLetter.isTemplate) {
 
-                if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
-                    app.selectedLetter.isSelected = false;
-                    app.selectedLetter = null;
+                if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
+                    app.letterToBeEdited.isSelected = false;
+                    app.letterToBeEdited = null;
                 }
 
                 highlightedLetter.triggerHighlight(false);
@@ -318,6 +319,7 @@ function App(ctx, width, height) {
 
             if (app.letterBeingCreatedWasMovedToMovableLetters()) {
                 app.movableLetters.push(app.letterInCreation);
+                app.letterInCreation.wasMoved = false;
                 app.letterInCreation = null;
             }
 
@@ -344,19 +346,19 @@ function App(ctx, width, height) {
 
     app.processMouseUpEventWithoutHighlightedLetter = function(e) {
 
-        if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
+        if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
 
-            if (app.selectedLetter.wasMoved) {
+            if (app.letterToBeEdited.wasMoved) {
 
-                app.selectedLetter.wasMoved = false;
+                app.letterToBeEdited.wasMoved = false;
 
             } else {
 
-                if (app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
-                    app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
-                    app.selectedLetter.isHighlighted = !app.selectedLetter.isHighlighted;
-                    if (!app.selectedLetter.isSelected) {
-                        app.selectedLetter = null;
+                if (app.letterToBeEdited.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+                    app.letterToBeEdited.isSelected = !app.letterToBeEdited.isSelected;
+                    app.letterToBeEdited.isHighlighted = !app.letterToBeEdited.isHighlighted;
+                    if (!app.letterToBeEdited.isSelected) {
+                        app.letterToBeEdited = null;
                     }
                 }
 
@@ -367,7 +369,7 @@ function App(ctx, width, height) {
 
     app.processMouseUpEventWith = function(highlightedLetter) {
 
-        if (app.selectedLetter === undefined || app.selectedLetter === null) {
+        if (app.letterToBeEdited === undefined || app.letterToBeEdited === null) {
 
             if (highlightedLetter.wasMoved) {
 
@@ -375,30 +377,30 @@ function App(ctx, width, height) {
 
             } else {
 
-                app.selectedLetter = highlightedLetter;
-                app.selectedLetter.isHighlighted = false;
-                app.selectedLetter.isSelected = true;
+                app.letterToBeEdited = highlightedLetter;
+                app.letterToBeEdited.isHighlighted = false;
+                app.letterToBeEdited.isSelected = true;
 
             }
 
         } else {
 
-            if (app.selectedLetter !== highlightedLetter) {
+            if (app.letterToBeEdited !== highlightedLetter) {
 
-                app.selectedLetter.isSelected = false;
-                app.selectedLetter.isHighlighted = false;
-                app.selectedLetter = highlightedLetter;
+                app.letterToBeEdited.isSelected = false;
+                app.letterToBeEdited.isHighlighted = false;
+                app.letterToBeEdited = highlightedLetter;
 
             } else {
 
-                if (app.selectedLetter.wasMoved) {
-                    app.selectedLetter.wasMoved = false;
+                if (app.letterToBeEdited.wasMoved) {
+                    app.letterToBeEdited.wasMoved = false;
                 } else {
-                    if (app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
-                        app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
-                        app.selectedLetter.isHighlighted = !app.selectedLetter.isHighlighted;
-                        if (!app.selectedLetter.isSelected) {
-                            app.selectedLetter = null;
+                    if (app.letterToBeEdited.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+                        app.letterToBeEdited.isSelected = !app.letterToBeEdited.isSelected;
+                        app.letterToBeEdited.isHighlighted = !app.letterToBeEdited.isHighlighted;
+                        if (!app.letterToBeEdited.isSelected) {
+                            app.letterToBeEdited = null;
                         }
                     }
                 }
@@ -415,7 +417,7 @@ function App(ctx, width, height) {
 
     }
 
-    app.isDragging = function() {
+    app.isManipulatingObject = function() {
         return app.mouseButtonIsDown;
     }
 
@@ -434,14 +436,22 @@ function App(ctx, width, height) {
 
     }
 
-    app.processDragging = function(e) {
+    app.processObjectManipulation = function(e) {
 
-        let letterToBeMoved = app.findLetterToBeMoved(e);
-        if (letterToBeMoved !== undefined && letterToBeMoved !== null) {
-            let xDiff = e.offsetX - app.mouse_X;
-            let yDiff = e.offsetY - app.mouse_Y;
-            letterToBeMoved.moveBy(xDiff, yDiff);
+        if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
+
+
+        } else {
+
+            let letterToBeMoved = app.findLetterToBeMoved(e);
+            if (letterToBeMoved !== undefined && letterToBeMoved !== null) {
+                let xDiff = e.offsetX - app.mouse_X;
+                let yDiff = e.offsetY - app.mouse_Y;
+                letterToBeMoved.moveBy(xDiff, yDiff);
+            }
+
         }
+
     }
 
     app.highlightObjectUnderMouseCursor = function(e) {
@@ -457,18 +467,12 @@ function App(ctx, width, height) {
                     ctx.canvas.style.cursor = "";
                 }
 
-            } else if (app.selectedLetter === undefined || app.selectedLetter === null) {
+            } else if (app.letterToBeEdited === undefined || app.letterToBeEdited === null) {
 
                 l.triggerHighlight(l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY));
 
             }
         });
-
-    }
-
-    app.processMoving = function(e) {
-
-        app.highlightObjectUnderMouseCursor(e);
 
     }
 
