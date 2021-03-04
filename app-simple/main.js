@@ -315,82 +315,23 @@ function App(ctx, width, height) {
 
         app.mouseButtonIsDown = false;
         if (app.aLetterIsBeingCreated()) {
+
             if (app.letterBeingCreatedWasMovedToMovableLetters()) {
                 app.movableLetters.push(app.letterInCreation);
                 app.letterInCreation = null;
             }
+
         } else {
 
             const highlightedLetter = app.findHighlightedLetter();
 
             if (highlightedLetter !== undefined && highlightedLetter !== null) {
 
-                if (app.selectedLetter === undefined || app.selectedLetter === null) {
-
-                    if (highlightedLetter.wasMoved) {
-
-                        highlightedLetter.wasMoved = false;
-
-                    } else {
-
-                        app.selectedLetter = highlightedLetter;
-                        app.selectedLetter.isHighlighted = false;
-                        app.selectedLetter.isSelected = true;
-
-                    }
-
-                } else {
-
-                    if (app.selectedLetter !== highlightedLetter) {
-
-                        app.selectedLetter.isSelected = false;
-                        app.selectedLetter.isHighlighted = false;
-                        app.selectedLetter = highlightedLetter;
-
-                    } else {
-
-                        if (app.selectedLetter.wasMoved) {
-                            app.selectedLetter.wasMoved = false;
-                        } else {
-                            if (app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
-                                app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
-                                app.selectedLetter.isHighlighted = !app.selectedLetter.isHighlighted;
-                                if (!app.selectedLetter.isSelected) {
-                                    app.selectedLetter = null;
-                                }
-                            }
-                        }
-
-                    }
-
-
-                }
-
+                app.processMouseUpEventWith(highlightedLetter);
 
             } else {
 
-                if (app.selectedLetter === undefined || app.selectedLetter === null) {
-
-                    app.selectedLetter = highlightedLetter;
-                    app.selectedLetter.isHighlighted = false;
-                    app.selectedLetter.isSelected = true;
-
-
-                } else {
-
-                    if (app.selectedLetter.wasMoved) {
-                        app.selectedLetter.wasMoved = false;
-                    } else {
-                        if (app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
-                            app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
-                            app.selectedLetter.isHighlighted = !app.selectedLetter.isHighlighted;
-                            if (!app.selectedLetter.isSelected) {
-                                app.selectedLetter = null;
-                            }
-                        }
-                    }
-
-                }
+                app.processMouseUpEventWithoutHighlightedLetter(e)
 
             }
 
@@ -399,6 +340,73 @@ function App(ctx, width, height) {
 
         app.redrawEverything(ctx, width, height);
         console.log("mouseButton released")
+    }
+
+    app.processMouseUpEventWithoutHighlightedLetter = function(e) {
+
+        if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
+
+            if (app.selectedLetter.wasMoved) {
+
+                app.selectedLetter.wasMoved = false;
+
+            } else {
+
+                if (app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+                    app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
+                    app.selectedLetter.isHighlighted = !app.selectedLetter.isHighlighted;
+                    if (!app.selectedLetter.isSelected) {
+                        app.selectedLetter = null;
+                    }
+                }
+
+            }
+        }
+
+    }
+
+    app.processMouseUpEventWith = function(highlightedLetter) {
+
+        if (app.selectedLetter === undefined || app.selectedLetter === null) {
+
+            if (highlightedLetter.wasMoved) {
+
+                highlightedLetter.wasMoved = false;
+
+            } else {
+
+                app.selectedLetter = highlightedLetter;
+                app.selectedLetter.isHighlighted = false;
+                app.selectedLetter.isSelected = true;
+
+            }
+
+        } else {
+
+            if (app.selectedLetter !== highlightedLetter) {
+
+                app.selectedLetter.isSelected = false;
+                app.selectedLetter.isHighlighted = false;
+                app.selectedLetter = highlightedLetter;
+
+            } else {
+
+                if (app.selectedLetter.wasMoved) {
+                    app.selectedLetter.wasMoved = false;
+                } else {
+                    if (app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+                        app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
+                        app.selectedLetter.isHighlighted = !app.selectedLetter.isHighlighted;
+                        if (!app.selectedLetter.isSelected) {
+                            app.selectedLetter = null;
+                        }
+                    }
+                }
+
+            }
+
+        }
+
     }
 
     app.findHighlightedLetter = function() {
