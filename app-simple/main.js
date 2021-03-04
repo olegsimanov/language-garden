@@ -61,7 +61,7 @@ function App(ctx, width, height) {
             isTemplate:         isTemplate,
             isHighlighted:      false,              // should have a frame
             isSelected:         false,              // should have a cross
-            isBeingCloned:      false,
+            wasMoved:           false,
 
 
             moveBy: function(xDiff, yDiff) {
@@ -71,6 +71,7 @@ function App(ctx, width, height) {
 
                 this.calculateLetterCoordinates();
                 this.calculateMetaCoordinates();
+                this.wasMoved = true;
 
             },
 
@@ -266,39 +267,13 @@ function App(ctx, width, height) {
 
     app.mouseMove   = function(e) {
 
-        if (app.mouseButtonIsDown) {
+        if (app.isDragging()) {
 
-            let letterToBeMoved = null;
-            if (app.letterInCreation !== null) {
-                letterToBeMoved = app.letterInCreation;
-            } else if (app.selectedLetter !== null) {
-                if (app.selectedLetter.isHighlighted) {
-                    letterToBeMoved = app.selectedLetter;
-                }
-            }
-
-            if (letterToBeMoved !== null) {
-                let xDiff = e.offsetX - app.mouse_X;
-                let yDiff = e.offsetY - app.mouse_Y;
-                letterToBeMoved.moveBy(xDiff, yDiff);
-            }
-
+            app.processDragging(e);
 
         } else {
 
-            // highlight object under mouse cursor
-            app.movableLetters.concat(app.fixedLetters).forEach(l => {
-                if (l.isSelected) {
-                    l.triggerHighlight(false);
-                    if (l.isOverCross(ctx, e.offsetX, e.offsetY)) {
-                        ctx.canvas.style.cursor = "pointer";
-                    } else {
-                        ctx.canvas.style.cursor = "";
-                    }
-                } else if (app.selectedLetter === undefined || app.selectedLetter === null) {
-                    l.triggerHighlight(l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY));
-                }
-            });
+            app.processMoving(e);
 
         }
 
@@ -312,75 +287,198 @@ function App(ctx, width, height) {
     app.mouseButtonDown = function(e) {
 
         app.mouseButtonIsDown = true;
-        const highlightedLetter = app.fixedLetters.concat(app.movableLetters).find(l => l.isHighlighted)
+
+        const highlightedLetter = app.findHighlightedLetter();
         if (highlightedLetter !== undefined && highlightedLetter !== null) {
+
             if (highlightedLetter.isTemplate) {
+
                 if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
                     app.selectedLetter.isSelected = false;
+                    app.selectedLetter = null;
                 }
+
                 highlightedLetter.triggerHighlight(false);
                 app.letterInCreation = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
                 app.letterInCreation.triggerHighlight(true);
-                app.letterInCreation.isBeingCloned = true;
                 app.letterInCreation.moveTo(highlightedLetter.x, highlightedLetter.y);
-            } else {
-                if (app.selectedLetter !== undefined && app.selectedLetter !== null &&
-                    app.selectedLetter !== highlightedLetter) {
-                    app.selectedLetter.isSelected = false;
-                }
-                app.selectedLetter = highlightedLetter;
+
             }
+
         }
+
+        app.redrawEverything(ctx, width, height);
         console.log("mouseButton pressed")
     }
 
     app.mouseButtonUp = function(e) {
 
         app.mouseButtonIsDown = false;
-        if (app.letterInCreation !== undefined && app.letterInCreation !== null) {
-            if (!app.separator.isBelow(app.letterInCreation) && app.letterInCreation.isBeingCloned) {
+        if (app.aLetterIsBeingCreated()) {
+            if (app.letterBeingCreatedWasMovedToMovableLetters()) {
                 app.movableLetters.push(app.letterInCreation);
+                app.letterInCreation = null;
             }
+        } else {
+
+            const highlightedLetter = app.findHighlightedLetter();
+
+            if (highlightedLetter !== undefined && highlightedLetter !== null) {
+
+                if (app.selectedLetter === undefined || app.selectedLetter === null) {
+
+                    if (highlightedLetter.wasMoved) {
+
+                        highlightedLetter.wasMoved = false;
+
+                    } else {
+
+                        app.selectedLetter = highlightedLetter;
+                        app.selectedLetter.isHighlighted = false;
+                        app.selectedLetter.isSelected = true;
+
+                    }
+
+                } else {
+
+                    if (app.selectedLetter !== highlightedLetter) {
+
+                        app.selectedLetter.isSelected = false;
+                        app.selectedLetter.isHighlighted = false;
+                        app.selectedLetter = highlightedLetter;
+
+                    } else {
+
+                        if (app.selectedLetter.wasMoved) {
+                            app.selectedLetter.wasMoved = false;
+                        } else {
+                            if (app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+                                app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
+                                app.selectedLetter.isHighlighted = !app.selectedLetter.isHighlighted;
+                                if (!app.selectedLetter.isSelected) {
+                                    app.selectedLetter = null;
+                                }
+                            }
+                        }
+
+                    }
+
+
+                }
+
+
+            } else {
+
+                if (app.selectedLetter === undefined || app.selectedLetter === null) {
+
+                    app.selectedLetter = highlightedLetter;
+                    app.selectedLetter.isHighlighted = false;
+                    app.selectedLetter.isSelected = true;
+
+
+                } else {
+
+                    if (app.selectedLetter.wasMoved) {
+                        app.selectedLetter.wasMoved = false;
+                    } else {
+                        if (app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+                            app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
+                            app.selectedLetter.isHighlighted = !app.selectedLetter.isHighlighted;
+                            if (!app.selectedLetter.isSelected) {
+                                app.selectedLetter = null;
+                            }
+                        }
+                    }
+
+                }
+
+            }
+
+
         }
 
+        app.redrawEverything(ctx, width, height);
         console.log("mouseButton released")
     }
 
-    app.mouseClick = function (e) {
+    app.findHighlightedLetter = function() {
+
+        return app.fixedLetters.concat(app.movableLetters).find(l => l.isHighlighted)
+
+    }
+
+    app.isDragging = function() {
+        return app.mouseButtonIsDown;
+    }
+
+    app.findLetterToBeMoved = function(e) {
 
         if (app.letterInCreation !== null) {
-            // mouse click comes after mouse button up
-            // so if letterInCreation wasn't null then mouseClicked just followed mouseButtonUp while creating a new letter
-            app.letterInCreation.isBeingCloned = false;
-            app.letterInCreation = null;
-
-        } else {
-
-            const highlightedLetter = app.fixedLetters.concat(app.movableLetters).find(l => l.isHighlighted)
-            if (highlightedLetter !== undefined && highlightedLetter !== null) {
-
-                if (app.selectedLetter !== undefined && app.selectedLetter !== null) {
-                    if (app.selectedLetter === highlightedLetter) {
-                        app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
-                    } else {
-                        app.selectedLetter.isSelected = false;
-                        highlightedLetter.isSelected = true;
-                    }
-                }
-                app.selectedLetter = highlightedLetter;
-
-            } else if (app.selectedLetter !== undefined && app.selectedLetter !== null
-                && app.selectedLetter.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
-
-                app.selectedLetter.isSelected = !app.selectedLetter.isSelected;
-                app.selectedLetter = null;
-
-            }
-
-            app.redrawEverything(ctx, width, height);
+            return app.letterInCreation;
         }
 
-        console.log("mouseClicked")
+        const highlightedLetter = app.findHighlightedLetter()
+        if (highlightedLetter !== null) {
+            return highlightedLetter;
+        }
+
+        return null;
+
+    }
+
+    app.processDragging = function(e) {
+
+        let letterToBeMoved = app.findLetterToBeMoved(e);
+        if (letterToBeMoved !== undefined && letterToBeMoved !== null) {
+            let xDiff = e.offsetX - app.mouse_X;
+            let yDiff = e.offsetY - app.mouse_Y;
+            letterToBeMoved.moveBy(xDiff, yDiff);
+        }
+    }
+
+    app.highlightObjectUnderMouseCursor = function(e) {
+
+        app.movableLetters.concat(app.fixedLetters).forEach(l => {
+
+            if (l.isSelected) {
+
+                l.triggerHighlight(false);
+                if (l.isOverCross(ctx, e.offsetX, e.offsetY)) {
+                    ctx.canvas.style.cursor = "pointer";
+                } else {
+                    ctx.canvas.style.cursor = "";
+                }
+
+            } else if (app.selectedLetter === undefined || app.selectedLetter === null) {
+
+                l.triggerHighlight(l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY));
+
+            }
+        });
+
+    }
+
+    app.processMoving = function(e) {
+
+        app.highlightObjectUnderMouseCursor(e);
+
+    }
+
+    app.aLetterIsBeingCreated = function() {
+
+        return app.letterInCreation !== undefined && app.letterInCreation !== null
+
+    }
+
+    app.letterBeingCreatedWasMovedToMovableLetters = function() {
+
+        return !app.separator.isBelow(app.letterInCreation);
+
+    }
+
+
+    app.mouseClick = function (e) {
+
     }
 
 
