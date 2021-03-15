@@ -425,9 +425,9 @@ function createCurvedWord(text, points) {
             const prev_mouse_rads           = Math.asin((prev_mouse_Y - stableY) / prev_mouse_radius);
             const new_mouse_rads            = Math.asin((newMouseY - stableY) / new_mouse_radius);
             let new_to_prev_radians_diff    = new_mouse_rads - prev_mouse_rads;
-            if (newMouseX < stableX) {
-                new_to_prev_radians_diff *= -1;
-            }
+            // if (newMouseX < stableX) {
+            //     new_to_prev_radians_diff *= -1;
+            // }
 
             return [ new_to_prev_radians_diff, new_to_prev_radius_ratio ] ;
 
