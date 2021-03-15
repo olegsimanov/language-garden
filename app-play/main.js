@@ -32,6 +32,9 @@ function App(ctx, width, height) {
     app.letter_X        = 0;
     app.letter_Y        = 0;
 
+    app.degree          = 0; // 45;
+    app.rad             = 0;        // degree * Math.PI / 180
+
     // ---------------------------------------------------------------------------------------------------------------------
     // canvas to draw on
     // ---------------------------------------------------------------------------------------------------------------------
@@ -67,14 +70,21 @@ function App(ctx, width, height) {
         if (app.mouseButtonIsDown) {
 
             if (app.mouseIsInTheBox) {
+
                 app.letter_X = app.mouse_X;
                 app.letter_Y = app.mouse_Y;
+
+            } else if (app.mouseIsOnTheCross) {
+
+                const [new_to_prev_radians_diff, new_to_prev_radius_ratio] = app.getMouseRadiansAndRadiusDiff(app.letter_X, app.letter_Y, app.prev_mouse_X, app.prev_mouse_Y, app.mouse_X, app.mouse_Y)
+                // console.log("mouse moved from: [" + app.prev_mouse_X + ", " + app.prev_mouse_Y + "] to [" + app.mouse_X + ", " + app.mouse_Y + "] rad diffs: " + new_to_prev_radians_diff)
+                app.rad += new_to_prev_radians_diff;
+                console.log(app.rad);
+
             }
+
         }
 
-        const [new_to_prev_radians_diff, new_to_prev_radius_ratio] = app.getMouseRadiansAndRadiusDiff(app.letter_X, app.letter_Y, app.prev_mouse_X, app.prev_mouse_Y, app.mouse_X, app.mouse_Y)
-
-        // console.log("mouse moved from: [" + app.prev_mouse_X + ", " + app.prev_mouse_Y + "] to [" + app.mouse_X + ", " + app.mouse_Y + "] rad diffs: " + new_to_prev_radians_diff)
         app.repaint();
 
 
@@ -91,9 +101,13 @@ function App(ctx, width, height) {
         const new_mouse_radius          = Math.sqrt(Math.abs(stableX - newMouseX)       * Math.abs(stableX - newMouseX)     + Math.abs(stableY - newMouseY)     * Math.abs(stableY - newMouseY))
         const new_to_prev_radius_ratio  = new_mouse_radius / prev_mouse_radius;
 
-        const prev_mouse_rads           = Math.asin((Math.max(prev_mouse_Y, stableY)    - Math.min(prev_mouse_Y, stableY))  / prev_mouse_radius);
-        const new_mouse_rads            = Math.asin((Math.max(newMouseY, stableY)       - Math.min(newMouseY, stableY))     / new_mouse_radius);
-        const new_to_prev_radians_diff  = new_mouse_rads - prev_mouse_rads;
+        const prev_mouse_rads           = Math.asin((prev_mouse_Y - stableY)  / prev_mouse_radius);
+        const new_mouse_rads            = Math.asin((newMouseY - stableY)     / new_mouse_radius);
+        let new_to_prev_radians_diff    = new_mouse_rads - prev_mouse_rads;
+        if (newMouseX < stableX) {
+            new_to_prev_radians_diff *= -1;
+        }
+
         console.log(prev_mouse_rads + " - " + new_mouse_rads + " => " + new_to_prev_radians_diff)
 
         return [ new_to_prev_radians_diff, new_to_prev_radius_ratio ] ;
@@ -165,9 +179,6 @@ function App(ctx, width, height) {
         const letters               = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "G", "K", "L", "M", "N", "O", "P"];
         const letter                = letters[12];
 
-        const degree                = 0; // 45;
-        const rad                   = degree * Math.PI / 180
-
         ctx.font                    = "200px language_garden_regular";
         const letterWidth           = ctx.measureText(letter).width     // SHOULD BE TAKEN AFTER PROPER FONT IT SELECTED!
         const letterHeight          = (ctx.measureText(letter).fontBoundingBoxAscent + ctx.measureText(letter).fontBoundingBoxDescent) / 2 * 1.29;
@@ -184,16 +195,16 @@ function App(ctx, width, height) {
         // -------------------------------------------------------------------------------------------------------------
 
         ctx.translate(middleOfTheLetterX, middleOfTheLetterY);
-        ctx.rotate(rad);
+        ctx.rotate(app.rad);
         ctx.translate(-middleOfTheLetterX, -middleOfTheLetterY);
 
-        app.drawRotatedLetter(letter, middleOfTheLetterX, middleOfTheLetterY, rad, startOfTheLetterX, startOfTheLetterY);
-        app.drawRotatedLetterBox(middleOfTheLetterX, middleOfTheLetterY, rad, startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight);
-        app.drawRotatedCross(middleOfTheLetterX, middleOfTheLetterY, rad, startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight);
+        app.drawRotatedLetter(letter, middleOfTheLetterX, middleOfTheLetterY, app.rad, startOfTheLetterX, startOfTheLetterY);
+        app.drawRotatedLetterBox(middleOfTheLetterX, middleOfTheLetterY, app.rad, startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight);
+        app.drawRotatedCross(middleOfTheLetterX, middleOfTheLetterY, app.rad, startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight);
 
         ctx.restore();
 
-        app.drawLetterMetadata(startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight, degree, rad);
+        app.drawLetterMetadata(startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight, app.rad);
 
     }
 
@@ -255,15 +266,17 @@ function App(ctx, width, height) {
 
     }
 
-    app.drawLetterMetadata = function(startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight, degree, rad) {
+    app.drawLetterMetadata = function(startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight, rad) {
 
         ctx.save();
+
+        const degree = app.rad * 180 / Math.PI;
 
         const symbolMetadata =
 
             "[x:" + startOfTheLetterX       + ", y:" + startOfTheLetterY        + "] " +
             "[w:" + Math.round(letterWidth) + ", h:" + Math.round(letterHeight) + "] " +
-            "[d:" + degree                  + ", r:" + Math.round(rad)          + "]";
+            "[d:" + Math.round(degree)      + ", r:" + rad                      + "]";
 
         const symbolMetadataLength = ctx.measureText(symbolMetadata).width
         ctx.fillText(symbolMetadata, width - symbolMetadataLength, 30)
