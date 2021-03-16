@@ -49,13 +49,13 @@ function App(ctx, width, height) {
 
             symbol:             symbol,
 
-            x:                  0,
-            y:                  0,
+            center:             { x: 0, y: 0 },
             width:              width,
             height:             height,
             rad:                0,
+            font:               "80px language_garden_regular",
 
-            framePath:          new Path2D(),
+            boxPath:          new Path2D(),
             crossPath:          new Path2D(),
 
             isTemplate:         isTemplate,
@@ -63,36 +63,27 @@ function App(ctx, width, height) {
             isSelected:         false,              // should have a cross
             wasMoved:           false,
 
-
-            getCenter: function() {
-
-                const x = this.x + width / 2;
-                const y = this.y - height / 2;
-
-                return { x, y };
-
-            },
-
-
             moveBy: function(xDiff, yDiff) {
 
-                this.x += xDiff;
-                this.y += yDiff;
+                this.center.x += xDiff;
+                this.center.y += yDiff;
 
-                this.calculateLetterCoordinates();
-                this.calculateMetaCoordinates();
+                this.plot();
                 this.wasMoved = true;
 
             },
 
             moveTo: function(x, y) {
 
-                this.x = x;
-                this.y = y;
+                this.center.x = x;
+                this.center.y = y;
 
-                this.calculateLetterCoordinates();
-                this.calculateMetaCoordinates();
+                this.plot();
 
+            },
+
+            rotateBy: function(angleIncrementInRad) {
+                app.letterToBeEdited.rad += angleIncrementInRad;
             },
 
             draw: function(ctx) {
@@ -107,10 +98,10 @@ function App(ctx, width, height) {
                 ctx.save();
                 ctx.beginPath();
                 ctx.fillStyle = "black";
-                ctx.translate(this.x, this.y);
+                ctx.translate(this.center.x, this.center.y);
                 ctx.rotate(this.rad);
-                ctx.fillText(this.symbol, 0, 0);
-                // ctx.fillText(this.symbol, this.x, this.y);
+                ctx.translate(-this.center.x, -this.center.y);
+                ctx.fillText(this.symbol, this.center.x - width / 2, this.center.y + height / 2);
                 ctx.closePath();
                 ctx.restore();
 
@@ -124,7 +115,7 @@ function App(ctx, width, height) {
 
                     ctx.strokeStyle = "red";
                     ctx.lineWidth = 1;
-                    ctx.stroke(this.framePath);
+                    ctx.stroke(this.boxPath);
 
                 }
 
@@ -139,31 +130,102 @@ function App(ctx, width, height) {
 
             },
 
-            calculateLetterCoordinates: function() {
+            plot: function() {
+
+                this.plotSymbol();
+                this.plotMeta();
 
             },
 
-            calculateMetaCoordinates: function() {
+            plotSymbol: function() {
 
-                this.framePath = new Path2D();
-                this.framePath.moveTo(this.x, this.y);
-                this.framePath.lineTo(this.x, this.y - this.height);
-                this.framePath.lineTo(this.x + this.width, this.y - this.height);
-                this.framePath.lineTo(this.x + this.width, this.y);
-                this.framePath.closePath();
+                // its left empty because I was not able to fina a way to
+                // plot a letter using the Canvas API
+                // this method is kept for semantic "symmetry"
+
+            },
+
+            plotBox: function () {
+
+                const alpha = - this.rad;
+                const beta  = app.degreeToRadian(90) - alpha ;
+                const c     = this.width / 2;
+                const cc    = this.height / 2;
+                const a     = c * Math.sin(alpha);
+                const b     = c * Math.sin(beta);
+                const aa    = cc * Math.sin(alpha);
+                const bb    = cc * Math.sin(beta);
+
+                const zeroX = this.center.x;
+                const zeroY = this.center.y;
+
+                this.boxPath = new Path2D();
+
+                // frame with rotation
+
+                this.boxPath.moveTo(zeroX + aa, zeroY + bb);
+                this.boxPath.lineTo(zeroX + b + aa, zeroY + bb - a);
+                this.boxPath.lineTo(zeroX + b - aa, zeroY - bb - a);
+                this.boxPath.lineTo(zeroX - b - aa, zeroY - bb + a)
+                this.boxPath.lineTo(zeroX - b + aa, zeroY + bb + a);
+
+                // frame without rotation
+
+                // this.boxPath.moveTo(this.center.x, this.center.y);
+                // this.boxPath.lineTo(this.center.x, this.center.y - this.height);
+                // this.boxPath.lineTo(this.center.x + this.width, this.center.y - this.height);
+                // this.boxPath.lineTo(this.center.x + this.width, this.center.y);
+
+                this.boxPath.closePath();
+
+
+            },
+
+
+            plotCross: function () {
+
+                const alpha = - this.rad;
+                const beta  = app.degreeToRadian(90) - alpha ;
+                // const c     = this.width / 2;
+                const c     = this.width;
+                // const cc    = this.height / 2;
+                const cc    = this.height;
+                const a     = c * Math.sin(alpha);
+                const b     = c * Math.sin(beta);
+                const aa    = cc * Math.sin(alpha);
+                const bb    = cc * Math.sin(beta);
+
+                const zeroX = this.center.x;
+                const zeroY = this.center.y;
 
                 this.crossPath = new Path2D();
-                this.crossPath.moveTo(this.x - 20, this.y - this.height / 2);
-                this.crossPath.lineTo(this.x + this.width + 20, this.y - this.height / 2);
-                this.crossPath.moveTo(this.x + this.width / 2, this.y - this.height - 20);
-                this.crossPath.lineTo(this.x + this.width / 2, this.y + 20);
 
+                this.crossPath.moveTo(zeroX, zeroY);
+                this.crossPath.lineTo(zeroX + aa, zeroY + bb);
+                // this.crossPath.lineTo(zeroX + b + aa, zeroY + bb - a);
+                // this.crossPath.lineTo(zeroX + b - aa, zeroY - bb - a);
+                // this.crossPath.lineTo(zeroX - b - aa, zeroY - bb + a)
+                // this.crossPath.lineTo(zeroX - b + aa, zeroY + bb + a);
+
+                // this.crossPath.moveTo(this.center.x - 20, this.center.y - this.height / 2);
+                // this.crossPath.lineTo(this.center.x + this.width + 20, this.center.y - this.height / 2);
+                // this.crossPath.moveTo(this.center.x + this.width / 2, this.center.y - this.height - 20);
+                // this.crossPath.lineTo(this.center.x + this.width / 2, this.center.y + 20);
+
+                this.crossPath.closePath();
+
+            },
+
+            plotMeta: function() {
+
+                this.plotBox();
+                this.plotCross();
 
             },
 
             isMouseCursorOverMe: function(ctx, x, y) {
 
-                return ctx.isPointInPath(this.framePath, x, y)
+                return ctx.isPointInPath(this.boxPath, x, y)
 
             },
 
@@ -224,23 +286,24 @@ function App(ctx, width, height) {
     app.calculateFixedLettersCoordinates = function(ctx, panelYOffset) {
 
         const gapBetweenLetters         = 5;
-        const offsetFromTheTopBorder    = 20;
-        let currentOffsetFromLeft       = gapBetweenLetters;
+        const offsetFromTheTopBorder    = 10;
+        let currentOffsetFromLeft       = 0;
 
         const alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
         for (let i = 0; i < alphabet.length; i++) {
 
-            const symbol    = alphabet[i];
-            const width     = ctx.measureText(symbol).width
-            const height    = (ctx.measureText(symbol).fontBoundingBoxAscent + ctx.measureText(symbol).fontBoundingBoxDescent) / 2;
-            let x           = currentOffsetFromLeft;
-            let y           = panelYOffset + height + offsetFromTheTopBorder
+            const symbol            = alphabet[i];
+            const width             = ctx.measureText(symbol).width
+            const height            = (ctx.measureText(symbol).fontBoundingBoxAscent + ctx.measureText(symbol).fontBoundingBoxDescent) / 2;
+            currentOffsetFromLeft   += gapBetweenLetters;                                   // beginning of the letter
+            let x                   = currentOffsetFromLeft + width / 2;                    // middle of the letter
+            let y                   = panelYOffset + height + offsetFromTheTopBorder
 
             let letter = this.createLetter(symbol, width, height,true);
             letter.moveTo(x, y)
             this.fixedLetters.push(letter)
 
-            currentOffsetFromLeft += (width + gapBetweenLetters);
+            currentOffsetFromLeft   += width;                                               // end of the letter
 
         }
     }
@@ -312,7 +375,7 @@ function App(ctx, width, height) {
                 highlightedLetter.triggerHighlight(false);
                 app.letterInCreation = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
                 app.letterInCreation.triggerHighlight(true);
-                app.letterInCreation.moveTo(highlightedLetter.x, highlightedLetter.y);
+                app.letterInCreation.moveTo(highlightedLetter.center.x, highlightedLetter.center.y);
 
             }
 
@@ -463,15 +526,15 @@ function App(ctx, width, height) {
 
     }
 
-
     app.processObjectManipulation = function(e) {
 
         if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
 
-            let centerOfTheLetter_X = app.letterToBeEdited.getCenter().x
-            let centerOfTheLetter_Y = app.letterToBeEdited.getCenter().y;
+            let centerOfTheLetter_X = app.letterToBeEdited.center.x
+            let centerOfTheLetter_Y = app.letterToBeEdited.center.y;
             const [new_to_prev_radians_diff, new_to_prev_radius_ratio] = app.getMouseRadiansAndRadiusDiff(centerOfTheLetter_X, centerOfTheLetter_Y, app.mouse_X, app.mouse_Y, e.offsetX, e.offsetY);
-            app.letterToBeEdited.rad += new_to_prev_radians_diff;
+            app.letterToBeEdited.rotateBy(new_to_prev_radians_diff);
+            app.letterToBeEdited.plot()
 
         } else {
 
@@ -520,11 +583,21 @@ function App(ctx, width, height) {
 
     }
 
-
     app.mouseClick = function (e) {
 
     }
 
+    // -------------------------------------------------------------------------------------------------------------
+    // utility functions
+    // -------------------------------------------------------------------------------------------------------------
+
+    app.radianToDegree = function (radian) {
+        return radian * 180 / Math.PI;
+    }
+
+    app.degreeToRadian = function(degree) {
+        return degree * Math.PI / 180;
+    }
 
     // -----------------------------------------------------------------------------------------------------------------------
 
