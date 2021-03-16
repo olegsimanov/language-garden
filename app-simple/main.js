@@ -40,6 +40,10 @@ function App(ctx, width, height) {
     app.fixedLetters    = [];
     app.movableLetters  = [];
 
+    app.allLetters = function() {
+        return app.movableLetters.concat(app.fixedLetters);
+    }
+
     app.separator       = null;
 
 
@@ -319,7 +323,7 @@ function App(ctx, width, height) {
 
         console.log("redrawing...")
         ctx.clearRect(0, 0, width, height);
-        if (app.letterInCreation !== undefined && app.letterInCreation !== null) {
+        if (app.aLetterIsBeingCreated()) {
             app.letterInCreation.draw(ctx);
         }
         this.separator.draw(ctx, width, height);
@@ -363,26 +367,41 @@ function App(ctx, width, height) {
         app.mouseButtonIsDown = true;
 
         const highlightedLetter = app.findHighlightedLetter();
-        if (highlightedLetter !== undefined && highlightedLetter !== null) {
+        if (app.aLetterIsHighlighted(highlightedLetter)) {
 
-            if (highlightedLetter.isTemplate) {
-
-                if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
-                    app.letterToBeEdited.isSelected = false;
-                    app.letterToBeEdited = null;
-                }
-
-                highlightedLetter.triggerHighlight(false);
-                app.letterInCreation = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
-                app.letterInCreation.triggerHighlight(true);
-                app.letterInCreation.moveTo(highlightedLetter.center.x, highlightedLetter.center.y);
-
-            }
+            app.processMouseDownEventWithHighlightedLetter(highlightedLetter)
 
         }
 
         app.redrawEverything(ctx, width, height);
         console.log("mouseButton pressed")
+    }
+
+    app.processMouseDownEventWithHighlightedLetter = function(highlightedLetter) {
+
+        if (highlightedLetter.isTemplate) {
+
+            if (app.aLetterIsBeingEdited()) {
+                app.letterToBeEdited.isSelected = false;
+                app.letterToBeEdited = null;
+            }
+
+            highlightedLetter.triggerHighlight(false);
+            app.letterInCreation = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
+            app.letterInCreation.triggerHighlight(true);
+            app.letterInCreation.moveTo(highlightedLetter.center.x, highlightedLetter.center.y);
+
+        } else {
+
+            if (app.aLetterIsBeingEdited() && highlightedLetter !== app.letterToBeEdited) {
+
+                app.letterToBeEdited.isSelected = false;
+                app.letterToBeEdited = null;
+
+            }
+
+        }
+
     }
 
     app.mouseButtonUp = function(e) {
@@ -419,7 +438,7 @@ function App(ctx, width, height) {
 
     app.processMouseUpEventWithoutHighlightedLetter = function(e) {
 
-        if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
+        if (app.aLetterIsBeingEdited()) {
 
             if (app.letterToBeEdited.wasMoved) {
 
@@ -469,7 +488,7 @@ function App(ctx, width, height) {
                 if (app.letterToBeEdited.wasMoved) {
                     app.letterToBeEdited.wasMoved = false;
                 } else {
-                    if (app.letterToBeEdited.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+                    if (app.letterToBeEdited.isMouseCursorOverMe(ctx, app.mouse_X, app.mouse_Y)) {
                         app.letterToBeEdited.isSelected = !app.letterToBeEdited.isSelected;
                         app.letterToBeEdited.isHighlighted = !app.letterToBeEdited.isHighlighted;
                         if (!app.letterToBeEdited.isSelected) {
@@ -486,12 +505,8 @@ function App(ctx, width, height) {
 
     app.findHighlightedLetter = function() {
 
-        return app.fixedLetters.concat(app.movableLetters).find(l => l.isHighlighted)
+        return app.allLetters().find(l => l.isHighlighted)
 
-    }
-
-    app.isManipulatingObject = function() {
-        return app.mouseButtonIsDown;
     }
 
     app.findLetterToBeMoved = function(e) {
@@ -506,6 +521,55 @@ function App(ctx, width, height) {
         }
 
         return null;
+
+    }
+
+    app.processObjectManipulation = function(e) {
+
+        if (app.aLetterIsBeingEdited()) {
+
+            let centerOfTheLetter_X = app.letterToBeEdited.center.x
+            let centerOfTheLetter_Y = app.letterToBeEdited.center.y;
+            const [new_to_prev_radians_diff, new_to_prev_radius_ratio] = app.getMouseRadiansAndRadiusDiff(centerOfTheLetter_X,
+                centerOfTheLetter_Y, app.mouse_X, app.mouse_Y, e.offsetX, e.offsetY);
+            app.letterToBeEdited.rotateBy(new_to_prev_radians_diff);
+            app.letterToBeEdited.plot()
+
+        } else {
+
+            let letterToBeMoved = app.findLetterToBeMoved(e);
+            if (letterToBeMoved !== undefined && letterToBeMoved !== null) {
+                let xDiff = e.offsetX - app.mouse_X;
+                let yDiff = e.offsetY - app.mouse_Y;
+                letterToBeMoved.moveBy(xDiff, yDiff);
+            }
+
+        }
+
+    }
+
+    app.highlightObjectUnderMouseCursor = function(e) {
+
+        app.allLetters().forEach(l => {
+
+            if (l.isSelected) {
+
+                l.triggerHighlight(false);
+                if (l.isOverCross(ctx, e.offsetX, e.offsetY)) {
+                    ctx.canvas.style.cursor = "pointer";
+                } else {
+                    ctx.canvas.style.cursor = "";
+                }
+
+            } else  {
+
+                    let mouseCursorOverMe = l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY);
+                    if (l !== app.letterToBeEdited) {
+                        l.triggerHighlight(mouseCursorOverMe);
+                    }
+
+            }
+        });
 
     }
 
@@ -526,54 +590,23 @@ function App(ctx, width, height) {
 
     }
 
-    app.processObjectManipulation = function(e) {
-
-        if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
-
-            let centerOfTheLetter_X = app.letterToBeEdited.center.x
-            let centerOfTheLetter_Y = app.letterToBeEdited.center.y;
-            const [new_to_prev_radians_diff, new_to_prev_radius_ratio] = app.getMouseRadiansAndRadiusDiff(centerOfTheLetter_X, centerOfTheLetter_Y, app.mouse_X, app.mouse_Y, e.offsetX, e.offsetY);
-            app.letterToBeEdited.rotateBy(new_to_prev_radians_diff);
-            app.letterToBeEdited.plot()
-
-        } else {
-
-            let letterToBeMoved = app.findLetterToBeMoved(e);
-            if (letterToBeMoved !== undefined && letterToBeMoved !== null) {
-                let xDiff = e.offsetX - app.mouse_X;
-                let yDiff = e.offsetY - app.mouse_Y;
-                letterToBeMoved.moveBy(xDiff, yDiff);
-            }
-
-        }
-
+    app.isManipulatingObject = function() {
+        return app.mouseButtonIsDown;
     }
 
-    app.highlightObjectUnderMouseCursor = function(e) {
-
-        app.movableLetters.concat(app.fixedLetters).forEach(l => {
-
-            if (l.isSelected) {
-
-                l.triggerHighlight(false);
-                if (l.isOverCross(ctx, e.offsetX, e.offsetY)) {
-                    ctx.canvas.style.cursor = "pointer";
-                } else {
-                    ctx.canvas.style.cursor = "";
-                }
-
-            } else if (app.letterToBeEdited === undefined || app.letterToBeEdited === null) {
-
-                l.triggerHighlight(l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY));
-
-            }
-        });
-
+    app.aLetterIsHighlighted = function(letterToTest) {
+        return letterToTest !== undefined && letterToTest !== null;
     }
 
     app.aLetterIsBeingCreated = function() {
 
         return app.letterInCreation !== undefined && app.letterInCreation !== null
+
+    }
+
+    app.aLetterIsBeingEdited = function() {
+
+        return app.letterToBeEdited !== undefined && app.letterToBeEdited !== null;
 
     }
 
