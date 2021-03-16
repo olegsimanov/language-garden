@@ -43,143 +43,133 @@ function App(ctx, width, height) {
     app.separator       = null;
 
 
-    app.createLetter = function(symbol, isTemplate) {
+    app.createLetter = function(symbol, width, height, isTemplate) {
 
         return {
 
             symbol:             symbol,
 
-            middleOfTheLetterX: 0,
-            middleOfTheLetterY: 0,
+            x:                  0,
+            y:                  0,
+            width:              width,
+            height:             height,
             rad:                0,
-            font:               "80px language_garden_regular",
+
+            framePath:          new Path2D(),
+            crossPath:          new Path2D(),
 
             isTemplate:         isTemplate,
             isHighlighted:      false,              // should have a frame
             isSelected:         false,              // should have a cross
             wasMoved:           false,
 
+
+            getCenter: function() {
+
+                const x = this.x + width / 2;
+                const y = this.y - height / 2;
+
+                return { x, y };
+
+            },
+
+
             moveBy: function(xDiff, yDiff) {
 
-                this.middleOfTheLetterX += xDiff;
-                this.middleOfTheLetterY += yDiff;
+                this.x += xDiff;
+                this.y += yDiff;
 
+                this.calculateLetterCoordinates();
+                this.calculateMetaCoordinates();
                 this.wasMoved = true;
 
             },
 
             moveTo: function(x, y) {
 
-                this.middleOfTheLetterX = x;
-                this.middleOfTheLetterY = y;
+                this.x = x;
+                this.y = y;
 
-            },
-
-            getDetailsForContext: function(ctx) {
-
-                ctx.font      = this.font;
-                const width   = ctx.measureText(symbol).width     // SHOULD BE TAKEN AFTER PROPER FONT IT SELECTED!
-                const height  = (ctx.measureText(symbol).fontBoundingBoxAscent + ctx.measureText(symbol).fontBoundingBoxDescent) / 2 * 1.29;
-
-                const leftBottom_X       = Math.round(this.middleOfTheLetterX - width / 2);
-                const leftBottom_Y       = Math.round(this.middleOfTheLetterY + height / 2);
-
-                return { leftBottom_X, leftBottom_Y, width, height }
+                this.calculateLetterCoordinates();
+                this.calculateMetaCoordinates();
 
             },
 
             draw: function(ctx) {
 
+                this.drawName(ctx);
+                this.drawMeta(ctx);
+
+            },
+
+            drawName: function(ctx) {
+
                 ctx.save();
-
-                ctx.font        = this.font;
-
-                const details   = this.getDetailsForContext(ctx);
-
-                // -------------------------------------------------------------------------------------------------------------
-                // draw rotated letter
-                // -------------------------------------------------------------------------------------------------------------
-
-                ctx.translate(this.middleOfTheLetterX, this.middleOfTheLetterY);
+                ctx.beginPath();
+                ctx.fillStyle = "black";
+                ctx.translate(this.x, this.y);
                 ctx.rotate(this.rad);
-                ctx.translate(-this.middleOfTheLetterX, -this.middleOfTheLetterY);
-
-                this.drawRotatedLetter(symbol, this.middleOfTheLetterX, this.middleOfTheLetterY, this.rad, details.leftBottom_X, details.leftBottom_Y);
-                this.drawRotatedLetterBox(this.middleOfTheLetterX, this.middleOfTheLetterY, this.rad, details.leftBottom_X, details.leftBottom_Y, details.width, details.height);
-                this.drawRotatedCross(this.middleOfTheLetterX, this.middleOfTheLetterY, this.rad, details.leftBottom_X, details.leftBottom_Y, details.width, details.height);
-
+                ctx.fillText(this.symbol, 0, 0);
+                // ctx.fillText(this.symbol, this.x, this.y);
+                ctx.closePath();
                 ctx.restore();
 
-                // this.drawLetterMetadata(startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight, this.rad);
-
             },
 
-            drawRotatedLetter: function(symbol, middleOfTheLetterX, middleOfTheLetterY, rad, startOfTheLetterX, startOfTheLetterY) {
+            drawMeta: function(ctx) {
 
-                ctx.beginPath();
-                ctx.strokeStyle = "red"
-                ctx.fillText(symbol, startOfTheLetterX, startOfTheLetterY);
+                ctx.save();
 
-            },
-
-            drawRotatedLetterBox: function (middleOfTheLetterX, middleOfTheLetterY, rad, startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight) {
-
-                ctx.beginPath();
-                // ctx.strokeStyle = "green";
-                ctx.moveTo(startOfTheLetterX, startOfTheLetterY);
-                ctx.lineTo(startOfTheLetterX + letterWidth, startOfTheLetterY);
-                ctx.lineTo(startOfTheLetterX + letterWidth, startOfTheLetterY - letterHeight);
-                ctx.lineTo(startOfTheLetterX, startOfTheLetterY - letterHeight);
-                ctx.lineTo(startOfTheLetterX, startOfTheLetterY);
-                ctx.closePath();
-
-                this.isHighlighted = ctx.isPointInPath(app.mouse_X, app.mouse_Y);
                 if (this.isHighlighted) {
-                    ctx.strokeStyle = "blue";
-                    ctx.canvas.style.cursor = "move";
-                    ctx.stroke();
-                } else {
+
                     ctx.strokeStyle = "red";
-                    ctx.canvas.style.cursor = "";
+                    ctx.lineWidth = 1;
+                    ctx.stroke(this.framePath);
+
                 }
 
-            },
-
-            drawRotatedCross: function(middleOfTheLetterX, middleOfTheLetterY, rad, startOfTheLetterX, startOfTheLetterY, letterWidth, letterHeight) {
-
-                ctx.beginPath();
-                ctx.strokeStyle = "red";
-                ctx.lineWidth = 5;
-                ctx.moveTo(startOfTheLetterX - 30, middleOfTheLetterY)
-                ctx.lineTo(startOfTheLetterX + letterWidth + 30, middleOfTheLetterY);
-                ctx.moveTo(middleOfTheLetterX, startOfTheLetterY - letterHeight - 30);
-                ctx.lineTo(middleOfTheLetterX, startOfTheLetterY + 30);
-
-                this.isSelected = ctx.isPointInStroke(app.mouse_X, app.mouse_Y);
-                if (!this.isSelected) {
-                    if (app.mouseIsOnTheCross) {
-                        ctx.strokeStyle = "blue";
-                        ctx.canvas.style.cursor = "pointer";
-                        ctx.stroke();
-                    } else {
+                if (this.isSelected) {
+                    if (!this.isTemplate) {
                         ctx.strokeStyle = "red";
-                        ctx.canvas.style.cursor = "";
+                        ctx.stroke(this.crossPath);
                     }
                 }
 
-                ctx.lineWidth = 1;          // resetting
+                ctx.restore();
+
+            },
+
+            calculateLetterCoordinates: function() {
+
+            },
+
+            calculateMetaCoordinates: function() {
+
+                this.framePath = new Path2D();
+                this.framePath.moveTo(this.x, this.y);
+                this.framePath.lineTo(this.x, this.y - this.height);
+                this.framePath.lineTo(this.x + this.width, this.y - this.height);
+                this.framePath.lineTo(this.x + this.width, this.y);
+                this.framePath.closePath();
+
+                this.crossPath = new Path2D();
+                this.crossPath.moveTo(this.x - 20, this.y - this.height / 2);
+                this.crossPath.lineTo(this.x + this.width + 20, this.y - this.height / 2);
+                this.crossPath.moveTo(this.x + this.width / 2, this.y - this.height - 20);
+                this.crossPath.lineTo(this.x + this.width / 2, this.y + 20);
+
 
             },
 
             isMouseCursorOverMe: function(ctx, x, y) {
 
-                return this.isHighlighted || this.isSelected;
+                return ctx.isPointInPath(this.framePath, x, y)
 
             },
 
             isOverCross: function(ctx, x, y) {
 
-                return false;
+                return ctx.isPointInStroke(this.crossPath, x, y);
 
             },
 
@@ -204,13 +194,19 @@ function App(ctx, width, height) {
                 ctx.strokeStyle = "black";
                 ctx.lineWidth = 1;
 
-                ctx.moveTo(0, this.panelYOffset);
-                ctx.lineTo(width, this.panelYOffset);
-                ctx.lineTo(width, this.panelYOffset + 1);
-                ctx.lineTo(0, this.panelYOffset + 1);
-
-                ctx.stroke();
+                ctx.stroke(this.path);
                 ctx.restore();
+
+            },
+
+            calculateCoordinates: function(ctx, width, height) {
+
+                this.path = new Path2D();
+                this.path.moveTo(0, this.panelYOffset);
+                this.path.lineTo(width, this.panelYOffset);
+                this.path.lineTo(width, this.panelYOffset + 1);
+                this.path.lineTo(0, this.panelYOffset + 1);
+                this.path.closePath();
 
             },
 
@@ -225,27 +221,34 @@ function App(ctx, width, height) {
 
     }
 
-    app.createAndPositionFixedLetters = function(ctx) {
+    app.calculateFixedLettersCoordinates = function(ctx, panelYOffset) {
 
         const gapBetweenLetters         = 5;
         const offsetFromTheTopBorder    = 20;
-        let currentOffsetFromLeft       = gapBetweenLetters + 15;
+        let currentOffsetFromLeft       = gapBetweenLetters;
 
-        // const alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
-        const alphabet = ['a', 'b', 'c', 'd', 'e'];
+        const alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
         for (let i = 0; i < alphabet.length; i++) {
 
-            const symbol        = alphabet[i];
-            const letter        = this.createLetter(symbol, true);
-            const details       = letter.getDetailsForContext(ctx);
-            let x               = currentOffsetFromLeft + details.width / 2;
-            let y               = app.separator.panelYOffset + details.height / 2 + offsetFromTheTopBorder;
-            letter.moveTo(x, y);
-            currentOffsetFromLeft += (details.width + gapBetweenLetters);
+            const symbol    = alphabet[i];
+            const width     = ctx.measureText(symbol).width
+            const height    = (ctx.measureText(symbol).fontBoundingBoxAscent + ctx.measureText(symbol).fontBoundingBoxDescent) / 2;
+            let x           = currentOffsetFromLeft;
+            let y           = panelYOffset + height + offsetFromTheTopBorder
 
-            this.fixedLetters.push(letter);
+            let letter = this.createLetter(symbol, width, height,true);
+            letter.moveTo(x, y)
+            this.fixedLetters.push(letter)
+
+            currentOffsetFromLeft += (width + gapBetweenLetters);
 
         }
+    }
+
+    app.calculateCoordinates = function (ctx, width, height) {
+
+        this.separator.calculateCoordinates(ctx, width, height)
+        this.calculateFixedLettersCoordinates(ctx, this.separator.panelYOffset);
 
     }
 
@@ -253,11 +256,11 @@ function App(ctx, width, height) {
 
         console.log("redrawing...")
         ctx.clearRect(0, 0, width, height);
-        if (this.letterInCreation !== undefined && this.letterInCreation !== null) {
-            this.letterInCreation.draw(ctx);
+        if (app.letterInCreation !== undefined && app.letterInCreation !== null) {
+            app.letterInCreation.draw(ctx);
         }
         this.separator.draw(ctx, width, height);
-        this.fixedLetters.forEach(fl => fl.draw(ctx));
+        this.fixedLetters.forEach(fl => fl.draw(ctx))
         this.movableLetters.forEach(ml => ml.draw(ctx))
 
     }
@@ -307,9 +310,9 @@ function App(ctx, width, height) {
                 }
 
                 highlightedLetter.triggerHighlight(false);
-                app.letterInCreation = app.createLetter(highlightedLetter.symbol, false)
+                app.letterInCreation = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
                 app.letterInCreation.triggerHighlight(true);
-                app.letterInCreation.moveTo(highlightedLetter.middleOfTheLetterX, highlightedLetter.middleOfTheLetterY);
+                app.letterInCreation.moveTo(highlightedLetter.x, highlightedLetter.y);
 
             }
 
@@ -403,7 +406,7 @@ function App(ctx, width, height) {
                 if (app.letterToBeEdited.wasMoved) {
                     app.letterToBeEdited.wasMoved = false;
                 } else {
-                    if (app.letterToBeEdited.isMouseCursorOverMe()) {
+                    if (app.letterToBeEdited.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
                         app.letterToBeEdited.isSelected = !app.letterToBeEdited.isSelected;
                         app.letterToBeEdited.isHighlighted = !app.letterToBeEdited.isHighlighted;
                         if (!app.letterToBeEdited.isSelected) {
@@ -465,7 +468,9 @@ function App(ctx, width, height) {
 
         if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
 
-            const [new_to_prev_radians_diff, new_to_prev_radius_ratio] = app.getMouseRadiansAndRadiusDiff(app.letterToBeEdited.middleOfTheLetterX, app.letterToBeEdited.middleOfTheLetterY, app.mouse_X, app.mouse_Y, e.offsetX, e.offsetY);
+            let centerOfTheLetter_X = app.letterToBeEdited.getCenter().x
+            let centerOfTheLetter_Y = app.letterToBeEdited.getCenter().y;
+            const [new_to_prev_radians_diff, new_to_prev_radius_ratio] = app.getMouseRadiansAndRadiusDiff(centerOfTheLetter_X, centerOfTheLetter_Y, app.mouse_X, app.mouse_Y, e.offsetX, e.offsetY);
             app.letterToBeEdited.rad += new_to_prev_radians_diff;
 
         } else {
@@ -525,8 +530,9 @@ function App(ctx, width, height) {
 
     app.init = function() {
 
-        this.separator = this.createSeparator(700);         // execution coupling! separator has to be created before fixed letters are positioned
-        this.createAndPositionFixedLetters(ctx);
+        this.separator = this.createSeparator(700);
+
+        this.calculateCoordinates(ctx, width, height);
         this.redrawEverything(ctx, width, height);
 
     };
