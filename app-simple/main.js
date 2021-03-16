@@ -393,7 +393,7 @@ function App(ctx, width, height) {
 
         } else {
 
-            if (app.aLetterIsBeingEdited() && highlightedLetter !== app.letterToBeEdited) {
+            if (app.aLetterIsBeingEdited()) {
 
                 app.letterToBeEdited.isSelected = false;
                 app.letterToBeEdited = null;
@@ -552,23 +552,27 @@ function App(ctx, width, height) {
 
         app.allLetters().forEach(l => {
 
-            if (l.isSelected) {
+            let mouseCursorOverMe = l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY);
+            if (mouseCursorOverMe) {
 
-                l.triggerHighlight(false);
-                if (l.isOverCross(ctx, e.offsetX, e.offsetY)) {
-                    ctx.canvas.style.cursor = "pointer";
-                } else {
-                    ctx.canvas.style.cursor = "";
-                }
+                if (l.isSelected) {
 
-            } else  {
-
-                    let mouseCursorOverMe = l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY);
-                    if (l !== app.letterToBeEdited) {
-                        l.triggerHighlight(mouseCursorOverMe);
+                    if (l.isOverCross(ctx, e.offsetX, e.offsetY)) {
+                        ctx.canvas.style.cursor = "pointer";
+                    } else {
+                        ctx.canvas.style.cursor = "";
                     }
 
+                }
+
+                l.triggerHighlight(true);
+
+            } else {
+
+                l.triggerHighlight(false)
+
             }
+
         });
 
     }
