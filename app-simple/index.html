@@ -44,7 +44,8 @@
         canvas.addEventListener('mouseup',      app.mouseButtonUp)
         canvas.addEventListener('mousemove',    app.mouseMove)
 
-        canvas.addEventListener("keydown",      app.keyDownEventListener);
+        document.addEventListener("keydown",    app.keyDownEventListener);
+        document.addEventListener("keyup",      app.keyUpEventListener);
 
         console.log('All assets are loaded')
 

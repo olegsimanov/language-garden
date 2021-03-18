@@ -37,8 +37,8 @@ function App(ctx, width, height) {
     // graphical elements
     // ---------------------------------------------------------------------------------------------------------------------
 
-    app.fixedLetters    = [];
-    app.movableLetters  = [];
+    app.fixedLetters            = [];
+    app.movableLetters          = [];
 
     app.allLetters = function() {
         return app.movableLetters.concat(app.fixedLetters);
@@ -287,13 +287,26 @@ function App(ctx, width, height) {
 
     }
 
-    app.calculateFixedLettersCoordinates = function(ctx, panelYOffset) {
+    app.upperCaseLettersActive  = false;
+    app.lowerCaseAlphabet       =  ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+    app.upperCaseAlphabet       =  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+
+    app.getFixedLettersAlphabet = function() {
+        if (app.upperCaseLettersActive) {
+            return app.upperCaseAlphabet;
+        } else {
+            return app.lowerCaseAlphabet;
+        }
+    }
+
+    app.initFixedLetters = function(ctx, panelYOffset) {
 
         const gapBetweenLetters         = 5;
         const offsetFromTheTopBorder    = 10;
         let currentOffsetFromLeft       = 0;
 
-        const alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+        this.fixedLetters = [];
+        const alphabet = app.getFixedLettersAlphabet();
         for (let i = 0; i < alphabet.length; i++) {
 
             const symbol            = alphabet[i];
@@ -310,13 +323,6 @@ function App(ctx, width, height) {
             currentOffsetFromLeft   += width;                                               // end of the letter
 
         }
-    }
-
-    app.calculateCoordinates = function (ctx, width, height) {
-
-        this.separator.calculateCoordinates(ctx, width, height)
-        this.calculateFixedLettersCoordinates(ctx, this.separator.panelYOffset);
-
     }
 
     app.redrawEverything = function (ctx, width, height) {
@@ -655,6 +661,27 @@ function App(ctx, width, height) {
 
     app.keyDownEventListener = function(event) {
         console.log("Key is down: " + event.keyCode);
+        if (event.keyCode === 16) {                             // SHIFT key is pressed
+
+            app.upperCaseLettersActive = true;
+            app.initFixedLetters(ctx, app.separator.panelYOffset);
+            app.redrawEverything(ctx, width, height)
+
+        }
+
+    };
+
+    app.keyUpEventListener = function(event) {
+        console.log("Key is up: " + event.keyCode);
+
+        if (event.keyCode === 16) {
+
+            app.upperCaseLettersActive = false;
+            app.initFixedLetters(ctx, app.separator.panelYOffset);
+            app.redrawEverything(ctx, width, height)
+
+        }
+
     };
 
     // -------------------------------------------------------------------------------------------------------------
@@ -674,8 +701,9 @@ function App(ctx, width, height) {
     app.init = function() {
 
         this.separator = this.createSeparator(700);
+        this.separator.calculateCoordinates(ctx, width, height)
 
-        this.calculateCoordinates(ctx, width, height);
+        this.initFixedLetters(ctx, this.separator.panelYOffset);
         this.redrawEverything(ctx, width, height);
 
     };
