@@ -46,7 +46,6 @@ function App(ctx, width, height) {
 
     app.separator       = null;
 
-
     app.createLetter = function(symbol, width, height, isTemplate) {
 
         return {
@@ -56,10 +55,10 @@ function App(ctx, width, height) {
             center:             { x: 0, y: 0 },
             width:              width,
             height:             height,
-            rad:                0,
+            rad:                0,                  // rotation of the letter in radians
             font:               "80px language_garden_regular",
 
-            boxPath:          new Path2D(),
+            boxPath:            new Path2D(),
             crossPath:          new Path2D(),
 
             isTemplate:         isTemplate,
@@ -101,6 +100,7 @@ function App(ctx, width, height) {
 
                 ctx.save();
                 ctx.beginPath();
+                ctx.font = this.font;
                 ctx.fillStyle = "black";
                 ctx.translate(this.center.x, this.center.y);
                 ctx.rotate(this.rad);
@@ -227,13 +227,13 @@ function App(ctx, width, height) {
 
             },
 
-            isMouseCursorOverMe: function(ctx, x, y) {
+            canBeMoved: function(ctx, x, y) {
 
                 return ctx.isPointInPath(this.boxPath, x, y)
 
             },
 
-            isOverCross: function(ctx, x, y) {
+            canBeRotated: function(ctx, x, y) {
 
                 return ctx.isPointInStroke(this.crossPath, x, y);
 
@@ -371,37 +371,14 @@ function App(ctx, width, height) {
 
             app.processMouseDownEventWithHighlightedLetter(highlightedLetter)
 
+        } else {
+
+            app.processMouseDownEventWithoutHighlightedLetter();
+
         }
 
         app.redrawEverything(ctx, width, height);
         console.log("mouseButton pressed")
-    }
-
-    app.processMouseDownEventWithHighlightedLetter = function(highlightedLetter) {
-
-        if (highlightedLetter.isTemplate) {
-
-            if (app.aLetterIsBeingEdited()) {
-                app.letterToBeEdited.isSelected = false;
-                app.letterToBeEdited = null;
-            }
-
-            highlightedLetter.triggerHighlight(false);
-            app.letterInCreation = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
-            app.letterInCreation.triggerHighlight(true);
-            app.letterInCreation.moveTo(highlightedLetter.center.x, highlightedLetter.center.y);
-
-        } else {
-
-            if (app.aLetterIsBeingEdited()) {
-
-                app.letterToBeEdited.isSelected = false;
-                app.letterToBeEdited = null;
-
-            }
-
-        }
-
     }
 
     app.mouseButtonUp = function(e) {
@@ -436,6 +413,57 @@ function App(ctx, width, height) {
         console.log("mouseButton released")
     }
 
+    app.mouseClick = function (e) {
+
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------------
+    // mouse handling logic helper functions
+    // ---------------------------------------------------------------------------------------------------------------------
+
+    app.processMouseDownEventWithHighlightedLetter = function(highlightedLetter) {
+
+        if (highlightedLetter.isTemplate) {
+
+            if (app.aLetterIsBeingEdited()) {
+                app.letterToBeEdited.isSelected = false;
+                app.letterToBeEdited = null;
+            }
+
+            highlightedLetter.triggerHighlight(false);
+            app.letterInCreation = app.createLetter(highlightedLetter.symbol, highlightedLetter.width, highlightedLetter.height, false)
+            app.letterInCreation.triggerHighlight(true);
+            app.letterInCreation.moveTo(highlightedLetter.center.x, highlightedLetter.center.y);
+
+        } else {
+
+            if (app.aLetterIsBeingEdited()) {
+
+                app.letterToBeEdited.isSelected = false;
+                app.letterToBeEdited = null;
+
+            }
+
+        }
+
+    }
+
+    app.processMouseDownEventWithoutHighlightedLetter = function() {
+
+        // if (app.letterToBeEdited !== undefined && app.letterToBeEdited !== null) {
+        //
+        //     if (!app.letterToBeEdited.canBeRotated(ctx, app.mouse_X, app.mouse_Y)) {
+        //         app.letterToBeEdited.isSelected = false
+        //         app.letterToBeEdited.isHighlighted = false;
+        //         app.letterToBeEdited = null;
+        //     }
+        //
+        //
+        // }
+
+
+    }
+
     app.processMouseUpEventWithoutHighlightedLetter = function(e) {
 
         if (app.aLetterIsBeingEdited()) {
@@ -446,7 +474,7 @@ function App(ctx, width, height) {
 
             } else {
 
-                if (app.letterToBeEdited.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY)) {
+                if (app.letterToBeEdited.canBeMoved(ctx, e.offsetX, e.offsetY)) {
                     app.letterToBeEdited.isSelected = !app.letterToBeEdited.isSelected;
                     app.letterToBeEdited.isHighlighted = !app.letterToBeEdited.isHighlighted;
                     if (!app.letterToBeEdited.isSelected) {
@@ -552,12 +580,12 @@ function App(ctx, width, height) {
 
         app.allLetters().forEach(l => {
 
-            let mouseCursorOverMe = l.isMouseCursorOverMe(ctx, e.offsetX, e.offsetY);
+            let mouseCursorOverMe = l.canBeMoved(ctx, e.offsetX, e.offsetY);
             if (mouseCursorOverMe) {
 
                 if (l.isSelected) {
 
-                    if (l.isOverCross(ctx, e.offsetX, e.offsetY)) {
+                    if (l.canBeRotated(ctx, e.offsetX, e.offsetY)) {
                         ctx.canvas.style.cursor = "pointer";
                     } else {
                         ctx.canvas.style.cursor = "";
@@ -620,9 +648,14 @@ function App(ctx, width, height) {
 
     }
 
-    app.mouseClick = function (e) {
 
-    }
+    // -------------------------------------------------------------------------------------------------------------
+    // key handling events
+    // -------------------------------------------------------------------------------------------------------------
+
+    app.keyDownEventListener = function(event) {
+        console.log("Key is down: " + event.keyCode);
+    };
 
     // -------------------------------------------------------------------------------------------------------------
     // utility functions
