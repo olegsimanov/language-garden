@@ -1,160 +1,117 @@
-var width = window.innerWidth;
-var height = window.innerHeight;
-
-// first we need to create a stage
-var stage = new Konva.Stage({
-    container: 'container',   // id of container <div>
-    width: width,
-    height: height,
-    border: {},
-});
-
-// then create layer
-var layer = new Konva.Layer();
-
-// create our shape
-var circle = new Konva.Circle({
-    x: stage.width() / 2,
-    y: stage.height() / 2,
-    radius: 70,
-    fill: 'red',
-    stroke: 'black',
-    strokeWidth: 4,
-    keepRatio: true,
-});
-
-var triangle = new Konva.Shape({
-    sceneFunc: function(context) {
-        context.beginPath();
-        context.moveTo(20, 50);
-        context.lineTo(220, 80);
-        context.quadraticCurveTo(150, 100, 260, 170);
-        context.closePath();
-
-        // special Konva.js method
-        context.fillStrokeShape(this);
-    },
-    fill: '#00D2FF',
-    stroke: 'black',
-    strokeWidth: 4,
-    keepRatio: true,
-});
-
-var pentagon = new Konva.RegularPolygon({
-    x: stage.width() / 4,
-    y: stage.height() / 4,
-    sides: 5,
-    radius: 70,
-    fill: 'red',
-    stroke: 'black',
-    strokeWidth: 4,
-    shadowOffsetX : 20,
-    shadowOffsetY : 25,
-    shadowBlur : 40,
-    opacity : 0.5,
-    keepRatio: true,
-});
-
-var text = new Konva.Text({
-    x: 50,
-    y: 70,
-    fontSize: 30,
-    text: 'A',
-    draggable: true,
-});
-
-triangle.draggable(true);
-circle.draggable(true);
-pentagon.draggable(true);
-text.draggable(true);
-
-var tr1 = new Konva.Transformer({
-    nodes: [pentagon],
-    centeredScaling: true,
-    enabledAnchors: [
-        'top-left',
-        'top-right',
-        'bottom-left',
-        'bottom-right',
-    ],
-});
-layer.add(tr1);
-
-var tr2 = new Konva.Transformer({
-    nodes: [text],
-    centeredScaling: true,
-    enabledAnchors: [
-        'top-left',
-        'top-right',
-        'bottom-left',
-        'bottom-right',
-    ],
-});
-layer.add(tr2);
-
-
-var tr3 = new Konva.Transformer({
-    nodes: [circle],
-    centeredScaling: true,
-    enabledAnchors: [
-        'top-left',
-        'top-right',
-        'bottom-left',
-        'bottom-right',
-    ],
-    selected: false,
-});
-tr3.visible(false);
-layer.add(tr3);
-
-
-circle.on('click', function() {
-    console.log('mouse over circle');
-    tr3.selected = !tr3.selected;
-    tr3.visible(tr3.selected);
-    layer.draw();
-});
-
-// circle.on('click', function() {
-//     console.log('mouse out of circle');
-//     tr3.visible(false);
-//     layer.draw();
-// });
-
-text.on('mouseover', function() {
-    console.log('mouse over text');
-});
-
-text.on('mouseout', function() {
-    console.log('mouse out of text');
-});
-
-triangle.on('mouseover', function() {
-    console.log('mouse over triangle');
-});
-
-triangle.on('mouseout', function() {
-    console.log('mouse out of triangle');
-});
-
-pentagon.on('mouseover', function() {
-    console.log('mouse over pentagon');
-});
-
-pentagon.on('mouseout', function() {
-    console.log('mouse out of pentagon');
-});
 
 
 
-// add the shape to the layer
-layer.add(circle);
-layer.add(triangle);
-layer.add(pentagon);
-layer.add(text);
 
-// add the layer to the stage
+
+
+
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+function createStage() {
+    return new Konva.Stage({
+        container: 'container',   // id of container <div>
+        width: width,
+        height: height,
+        border: {},
+    });
+}
+
+function createLayer() {
+    return new Konva.Layer();
+}
+
+function createTransformer(node) {
+    const tr = new Konva.Transformer({
+        nodes: [node],
+        centeredScaling: true,
+        enabledAnchors: [
+            'top-left',
+            'top-right',
+            'bottom-left',
+            'bottom-right',
+        ],
+        visible: false,
+    });
+    tr.selected = false;
+    return tr;
+}
+
+function createText(letter, fontSize, draggable) {
+
+    const text = new Konva.Text({
+        x: 100,
+        y: 100,
+        fontSize: fontSize,
+        text: letter,
+        draggable: draggable,
+    });
+
+    text.template = true;
+
+    return text;
+}
+
+
+const stage = createStage();
+const layer = createLayer();
 stage.add(layer);
 
-// draw the image
+
+
+const upperCaseAlphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+// const upperCaseAlphabet = ['A', 'B', 'C'];
+let currentLetterOffset = 10;
+for (let i = 0; i < upperCaseAlphabet.length; i++) {
+
+    const letter = createText(upperCaseAlphabet[i], 60, true);
+    letter.x(currentLetterOffset);
+    letter.y(height - 100);
+    layer.add(letter);
+
+    currentLetterOffset += (letter.getTextWidth() + 5)
+
+    const tr = createTransformer(letter);
+    layer.add(tr);
+
+
+    letter.on('click', function() {
+        console.log('mouse over letter: ' + letter.getAttr('text'));
+        if (!letter.template) {
+
+            tr.selected = !tr.selected;
+            tr.visible(tr.selected);
+            layer.draw();
+
+        }
+
+    });
+
+    letter.on('dragend', function() {
+        console.log('drag stopped with letter: ' + letter.getAttr('text'));
+
+        if (letter.template) {
+
+            letter.template = false; // is no longer a template because we are moving it
+            const template = createText(letter.getAttr('text').toLowerCase(), letter.fontSize, false);
+            template.x(100);
+            template.y(100);
+            layer.add(template);
+            layer.draw();
+
+        }
+
+    });
+
+    letter.on('mousedown', function() {
+        console.log('mouse down on letter: ' + letter.getAttr('text'));
+    });
+
+    letter.on('mouseup', function() {
+        console.log('mouse up on text: ' + letter.getAttr('text'));
+    });
+
+
+}
+
 layer.draw();
