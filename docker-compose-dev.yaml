@@ -1,0 +1,8 @@
+version: '2'
+services:
+  web:
+    image: olegsimanov/language-garden-web:1
+    ports:
+      - "8083:80"
+    environment:
+      - NGINX_PORT=80
