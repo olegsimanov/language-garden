@@ -96,6 +96,7 @@ for (let i = 0; i < upperCaseAlphabet.length; i++) {
             const template = createText(letter.getAttr('text').toLowerCase(), letter.fontSize, false);
             template.x(100);
             template.y(100);
+            template.visible(true);
             layer.add(template);
             layer.draw();
 
